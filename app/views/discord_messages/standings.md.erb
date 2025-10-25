@@ -1,0 +1,22 @@
+<% winners = standings.select { |standing| standing[:winner] } %>
+<% contenders = standings.select { |standing| standing[:contender] } %>
+<% eliminated = standings.select { |standing| !standing[:contender] && !standing[:winner] } %>
+# Week <%= week %> Pick-em Standings
+
+<% if winners.any? %>
+### :tada: <%= "Winner".pluralize(winners.size) %>! :tada:
+  <% winners.each do |winner| %>
+<%= winner[:user].discord_username %>: <%= winner[:correct_picks] %> <%= "point".pluralize(winner[:correct_picks]) %>
+  <% end %>
+<% elsif contenders.any? %>
+### <%= "Contender".pluralize(contenders.size) %> :bar_chart:
+  <% contenders.each do |contender| %>
+<%= contender[:user].discord_username %>: <%= contender[:correct_picks] %> <%= "point".pluralize(contender[:correct_picks]) %>
+  <% end %>
+<% end %>
+
+### <%= "Eliminated" %> :skull:
+<% eliminated.each do |eliminated| %>
+~~<%= eliminated[:user].discord_username %>: <%= eliminated[:correct_picks] %> <%= "point".pluralize(eliminated[:correct_picks]) %>~~
+<% end %>
+

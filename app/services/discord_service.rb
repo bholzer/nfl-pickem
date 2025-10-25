@@ -80,10 +80,39 @@ class DiscordService
 
   def send_submission_link(user, week)
     return unless user.discord_user_id.present?
-    send_direct_message(user.discord_user_id, build_submission_link_message(user, week))
+    url = Rails.application.routes.url_helpers.new_submission_url(token: user.weekly_token(week))
+    send_direct_message(
+      user.discord_user_id,
+      render_message("submission_link", url: url, week: week, name: user.discord_username)
+    )
+  end
+
+  def send_standings(week)
+    standings = ScoringService.new(week: week).standings
+    return unless standings.any?
+
+    send_direct_message(
+      test_user_id,
+      render_message("standings", standings: standings, week: week)
+    )
+  end
+
+  def send_hashes(week)
+    send_direct_message(
+      test_user_id,
+      render_message("hashes", submissions: Submission.where(week: week), week: week)
+    )
   end
 
   private
+
+  def render_message(template, locals = {})
+    ApplicationController.render(
+      template: "discord_messages/#{template}",
+      locals: locals,
+      layout: false
+    )
+  end
 
   def auth_headers
     {
@@ -92,13 +121,7 @@ class DiscordService
     }
   end
 
-  def build_submission_link_message(user, week)
-    <<~MESSAGE
-      Hi, #{user.discord_username}
-
-      Pick-em week #{week} is here!
-
-      [Submit your picks here](#{Rails.application.routes.url_helpers.new_submission_url(token: user.weekly_token(week))})
-    MESSAGE
+  def test_user_id
+    User.find(1).discord_user_id
   end
 end

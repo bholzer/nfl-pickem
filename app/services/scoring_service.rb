@@ -39,7 +39,7 @@ class ScoringService
     if contenders.size == 1
       contenders.first[:winner] = true
     elsif @scoreboard.all_games_complete?
-      min_tiebreak_diff = contenders.min { |c| c[:submission].tiebreaker - @scoreboard.monday_night_total }
+      min_tiebreak_diff = contenders.map { |c| c[:submission].tiebreaker - @scoreboard.monday_night_total }.min
       winners = contenders.select { |c| c[:submission].tiebreaker - @scoreboard.monday_night_total == min_tiebreak_diff }
       winners.each { |w| w[:winner] = true }
     end

@@ -1,4 +1,4 @@
-class DeliverSubmissionLinks < ApplicationJob
+class DeliverSubmissionLinksJob < ApplicationJob
   queue_as :default
 
   def perform(week = nil)

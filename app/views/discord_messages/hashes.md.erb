@@ -1,0 +1,6 @@
+# Week <%= week %> Pick Hashes (SHA-256 Hex)
+Use this hash to verify the winner's picks
+
+<% submissions.each do |submission| %>
+**<%= submission.user.discord_username %>**: `<%= submission.hash %>`
+<% end %>
