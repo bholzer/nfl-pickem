@@ -78,6 +78,11 @@ class DiscordService
     false
   end
 
+  def send_submission_link(user, week)
+    return unless user.discord_user_id.present?
+    send_direct_message(user.discord_user_id, build_submission_link_message(user, week))
+  end
+
   private
 
   def auth_headers
@@ -87,81 +92,13 @@ class DiscordService
     }
   end
 
-  # Send weekly pick'em announcement with submission links
-  # @param guild_id [String] Discord guild ID
-  # @param week [Integer] NFL week number
-  # @param base_url [String] Base URL for the application
-  # @return [Integer] Number of DMs sent successfully
-  def send_weekly_announcements(guild_id, week, base_url)
-    members = fetch_guild_members(guild_id)
-    sent_count = 0
-
-    members.each do |member|
-      # Create or find user in database
-      user = User.find_or_create_by(discord_user_id: member[:id]) do |u|
-        u.discord_username = member[:username]
-      end
-
-      # Generate JWT token for this user and week
-      token = JwtService.generate_submission_token(
-        user_id: user.discord_user_id,
-        username: user.discord_username,
-        week: week
-      )
-
-      # Build submission URL
-      submission_url = "#{base_url}/picks/new?token=#{token}"
-
-      # Send DM with personalized link
-      message = build_announcement_message(week, submission_url)
-      sent_count += 1 if send_direct_message(member[:id], message)
-    end
-
-    sent_count
-  end
-
-  # Post weekly scores to a channel
-  # @param channel_id [String] Discord channel ID
-  # @param week [Integer] NFL week number
-  # @param standings [Array<Hash>] Array of user standings
-  # @return [Boolean] True if posted successfully
-  def post_weekly_scores(channel_id, week, standings)
-    message = build_scores_message(week, standings)
-    send_channel_message(channel_id, message)
-  end
-
-  private
-
-  # Build the announcement message for pick submission
-  # @param week [Integer] NFL week number
-  # @param url [String] Submission URL
-  # @return [String] Formatted message
-  def build_announcement_message(week, url)
+  def build_submission_link_message(user, week)
     <<~MESSAGE
-      **NFL Pick'em - Week #{week}**
+      Hi, #{user.discord_username}
 
-      It's time to submit your picks for Week #{week}!
+      Pick-em week #{week} is here!
 
-      Click the link below to make your selections:
-      #{url}
-
-      Remember to submit your picks before the first game starts. Good luck!
+      [Submit your picks here](#{Rails.application.routes.url_helpers.new_submission_url(token: user.weekly_token(week))})
     MESSAGE
-  end
-
-  # Build the scores message for weekly results
-  # @param week [Integer] NFL week number
-  # @param standings [Array<Hash>] Array of user standings with :username and :correct_picks
-  # @return [String] Formatted message
-  def build_scores_message(week, standings)
-    message = "**Week #{week} Results**\n\n"
-
-    standings.sort_by { |s| -s[:correct_picks] }.each_with_index do |standing, index|
-      rank = index + 1
-      medal = rank == 1 ? "🥇" : (rank == 2 ? "🥈" : (rank == 3 ? "🥉" : "  "))
-      message += "#{medal} #{rank}. **#{standing[:username]}** - #{standing[:correct_picks]} correct\n"
-    end
-
-    message
   end
 end

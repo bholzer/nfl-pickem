@@ -4,9 +4,8 @@ class SubmissionsController < ApplicationController
   before_action :load_games, only: [ :new, :create, :update ]
 
   def new
-    @submission = find_or_initialize_submission
-    @games_locked = EspnApi.any_games_started?(week: @token_data[:week])
-    @earliest_game_time = EspnApi.earliest_game_time(week: @token_data[:week])
+    @games_locked = @scoreboard.games_started?
+    @earliest_game_time = @scoreboard.earliest_game_time
   end
 
   def create
@@ -27,12 +26,12 @@ class SubmissionsController < ApplicationController
 
     # Get game data and scoring breakdown
     @breakdown = ScoringService.submission_breakdown(@submission, week: @token_data[:week])
-    @games_data = EspnApi.fetch_games(week: @token_data[:week])
+    @scoreboard = EspnScoreboard.new(week: @token_data[:week])
   end
 
   def index
     # Show standings for a specific week
-    week = params[:week]&.to_i || EspnApi.current_week
+    week = params[:week]&.to_i || EspnScoreboard.current_week
     @standings = ScoringService.calculate_standings(week: week)
     @week = week
   end
@@ -69,7 +68,7 @@ class SubmissionsController < ApplicationController
   end
 
   def load_games
-    @games_data = EspnApi.fetch_games(week: @token_data[:week])
+    @scoreboard = EspnScoreboard.new(week: @token_data[:week])
     @week = @token_data[:week]
   end
 
@@ -78,10 +77,10 @@ class SubmissionsController < ApplicationController
   end
 
   def save_submission
-    games_locked = EspnApi.any_games_started?(week: @token_data[:week])
+    @games_locked = @scoreboard.games_started?
 
     # Prevent editing existing submissions once games have started
-    if @submission.persisted? && games_locked
+    if @submission.persisted? && @games_locked
       redirect_to submission_path(@submission, token: params[:token]),
                   alert: "Cannot edit picks after games have started."
       return
@@ -99,8 +98,7 @@ class SubmissionsController < ApplicationController
       redirect_to submission_path(@submission, token: params[:token]),
                   notice: "Picks #{@submission.previously_new_record? ? 'submitted' : 'updated'} successfully!"
     else
-      @games_locked = games_locked
-      @earliest_game_time = EspnApi.earliest_game_time(week: @token_data[:week])
+      @earliest_game_time = @scoreboard.earliest_game_time
       render :new, status: :unprocessable_entity
     end
   end

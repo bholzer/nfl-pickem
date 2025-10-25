@@ -1,13 +1,12 @@
-<div class="container mx-auto px-4 py-8">
-  <div class="max-w-4xl mx-auto">
-    <h1 class="text-4xl font-bold mb-8 text-center">NFL Pick'em Standings</h1>
-
-    <div class="mb-6 text-center">
-      <h2 class="text-2xl font-semibold">Week <%= @week %></h2>
+<div class="py-8">
+  <div class="max-w-6xl mx-auto px-4">
+    <div class="bg-white rounded-lg shadow-xl p-6 sm:p-8 mb-6">
+      <h1 class="text-3xl sm:text-4xl font-bold mb-2 text-gray-800 text-center">NFL Pick'em Standings</h1>
+      <p class="text-xl text-gray-600 text-center">Week <%= @week %></p>
     </div>
 
     <% if @standings && @standings.any? %>
-      <div class="bg-white shadow-lg rounded-lg overflow-hidden">
+      <div class="bg-white shadow-xl rounded-lg overflow-hidden">
         <table class="w-full">
           <thead class="bg-gray-800 text-white">
             <tr>
@@ -44,8 +43,10 @@
         </table>
       </div>
     <% else %>
-      <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded text-center">
-        No submissions yet for Week <%= @week %>.
+      <div class="bg-white rounded-lg shadow-xl p-6 sm:p-8">
+        <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded text-center">
+          No submissions yet for Week <%= @week %>.
+        </div>
       </div>
     <% end %>
   </div>

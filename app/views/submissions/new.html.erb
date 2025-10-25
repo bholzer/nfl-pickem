@@ -1,134 +1,147 @@
-<div class="container mx-auto px-4 py-8">
-  <div class="max-w-6xl mx-auto">
-    <div class="mb-8">
-      <h1 class="text-3xl font-bold mb-2">NFL Pick'em - Week <%= @week %></h1>
-      <p class="text-gray-600">
+<div class="py-8">
+  <div class="max-w-5xl mx-auto px-4">
+    <div class="bg-white rounded-lg shadow-xl p-6 sm:p-8 mb-6">
+      <h1 class="text-2xl sm:text-3xl font-bold mb-2 text-gray-800">NFL Pick'em - Week <%= @week %></h1>
+      <p class="text-gray-600 mb-4">
         Welcome, <strong><%= @token_data[:username] %></strong>
       </p>
 
       <% if @games_locked %>
         <% if @submission.persisted? %>
-          <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mt-4">
+          <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
             <strong>Locked!</strong> You cannot edit your picks after games have started.
           </div>
         <% else %>
-          <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mt-4">
+          <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded">
             <strong>Late submission:</strong> Some games have started. You can only pick for games that haven't kicked off yet.
           </div>
         <% end %>
       <% elsif @earliest_game_time %>
-        <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mt-4">
+        <div class="bg-blue-50 border border-blue-300 text-blue-700 px-4 py-3 rounded">
           Picks lock at: <strong><%= @earliest_game_time.strftime("%A, %B %d at %l:%M %p %Z") %></strong>
         </div>
       <% end %>
     </div>
 
-    <% if @games_data && @games_data[:games]&.any? %>
-      <%= form_with model: @submission, class: "space-y-6" do |f| %>
+    <% if @scoreboard.games&.any? %>
+      <%= form_with model: @submission do |f| %>
         <%= hidden_field_tag :token, params[:token] %>
 
-        <!-- View Mode Toggle -->
-        <div class="flex justify-end mb-4">
-          <button type="button" id="view-toggle" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-            Switch to Compact View
-          </button>
-        </div>
+        <div class="bg-white rounded-lg shadow-xl p-6 sm:p-8">
+          <!-- Games by Date -->
+          <% games_by_date = @scoreboard.games.group_by { |game| game[:date] } %>
+          <% games_by_date.sort.each_with_index do |(date, games), index| %>
+            <!-- Date Separator -->
+            <% if index > 0 %>
+              <div class="border-t-2 border-gray-200 my-6 sm:my-8"></div>
+            <% end %>
 
-        <!-- Games by Date -->
-        <% games_by_date = @games_data[:games].group_by { |game| Date.parse(game[:date]) } %>
-        <% games_by_date.sort.each do |date, games| %>
-          <div class="mb-8">
-            <h2 class="text-2xl font-bold mb-4 border-b-2 pb-2">
+            <h2 class="text-xl sm:text-2xl font-bold mb-4 text-gray-800">
               <%= date.strftime("%A, %B %d") %>
             </h2>
 
-            <!-- Card View -->
-            <div id="card-view" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="space-y-2 sm:space-y-3 mb-6">
               <% games.each do |game| %>
                 <% existing_pick_team_id = @submission.picks[game[:competition_id]] if @submission.picks.present? %>
                 <% game_started = game[:status] != "STATUS_SCHEDULED" %>
                 <% pick_disabled = game_started || (@submission.persisted? && @games_locked) %>
 
-                <div class="border rounded-lg p-4 <%= game_started ? 'bg-gray-100' : 'bg-white' %> shadow">
-                  <div class="text-sm text-gray-500 mb-2">
-                    <%= Time.parse(game[:date]).strftime("%l:%M %p") %>
+                <div class="border-2 <%= game_started ? 'border-gray-300 bg-gray-50' : 'border-gray-200' %> hover:border-indigo-300 rounded-lg p-3 sm:p-4 transition-colors">
+                  <!-- Game Time & Status -->
+                  <div class="flex items-center justify-between mb-2 text-xs sm:text-sm">
+                    <div class="text-gray-500 font-medium">
+                      <%= game[:date].strftime("%l:%M %p %Z") %>
+                    </div>
                     <% if game_started %>
-                      <span class="ml-2 px-2 py-1 bg-red-500 text-white text-xs rounded">
+                      <span class="px-2 py-1 bg-red-100 text-red-700 text-xs rounded font-medium">
                         <%= game[:status_detail] %>
                       </span>
                     <% end %>
                   </div>
 
-                  <div class="space-y-3">
-                    <!-- Away Team -->
-                    <label class="flex items-center p-3 border-2 rounded cursor-pointer hover:bg-gray-50 <%= existing_pick_team_id == game[:away_team][:id] ? 'border-blue-500 bg-blue-50' : 'border-gray-200' %>">
+                  <!-- Teams -->
+                  <div class="flex items-center justify-center gap-2 sm:gap-3">
+                    <!-- Away Team (Left) -->
+                    <div class="flex items-center justify-end gap-1 sm:gap-2 flex-1">
+                      <label for="away_<%= game[:competition_id] %>" class="cursor-pointer font-medium text-gray-800 text-xs sm:text-sm text-right">
+                        <% if game_started && game[:away_team][:score] %>
+                          <span class="mr-1 text-lg font-bold"><%= game[:away_team][:score] %></span>
+                        <% end %>
+                        <%= game[:away_team][:abbreviation] %>
+                      </label>
+                      <img src="<%= game[:away_team][:logo] %>"
+                           alt="<%= game[:away_team][:name] %>"
+                           class="w-6 h-6 sm:w-8 sm:h-8 object-contain flex-shrink-0">
                       <%= radio_button_tag "submission[picks][#{game[:competition_id]}]",
                                            game[:away_team][:id],
                                            existing_pick_team_id == game[:away_team][:id],
                                            disabled: pick_disabled,
-                                           class: "mr-3" %>
-                      <img src="<%= game[:away_team][:logo] %>" alt="<%= game[:away_team][:name] %>" class="w-8 h-8 mr-3">
-                      <div class="flex-1">
-                        <div class="font-semibold"><%= game[:away_team][:name] %></div>
-                        <div class="text-sm text-gray-500"><%= game[:away_team][:abbreviation] %></div>
-                      </div>
-                      <% if game[:away_team][:score] %>
-                        <div class="text-xl font-bold"><%= game[:away_team][:score] %></div>
-                      <% end %>
-                    </label>
+                                           id: "away_#{game[:competition_id]}",
+                                           required: true %>
+                    </div>
 
-                    <!-- Home Team -->
-                    <label class="flex items-center p-3 border-2 rounded cursor-pointer hover:bg-gray-50 <%= existing_pick_team_id == game[:home_team][:id] ? 'border-blue-500 bg-blue-50' : 'border-gray-200' %>">
+                    <!-- Divider -->
+                    <div class="px-2 text-gray-400 font-semibold text-sm sm:text-base flex-shrink-0">@</div>
+
+                    <!-- Home Team (Right) -->
+                    <div class="flex items-center justify-start gap-1 sm:gap-2 flex-1">
                       <%= radio_button_tag "submission[picks][#{game[:competition_id]}]",
                                            game[:home_team][:id],
                                            existing_pick_team_id == game[:home_team][:id],
                                            disabled: pick_disabled,
-                                           class: "mr-3" %>
-                      <img src="<%= game[:home_team][:logo] %>" alt="<%= game[:home_team][:name] %>" class="w-8 h-8 mr-3">
-                      <div class="flex-1">
-                        <div class="font-semibold"><%= game[:home_team][:name] %></div>
-                        <div class="text-sm text-gray-500"><%= game[:home_team][:abbreviation] %></div>
-                      </div>
-                      <% if game[:home_team][:score] %>
-                        <div class="text-xl font-bold"><%= game[:home_team][:score] %></div>
-                      <% end %>
-                    </label>
+                                           id: "home_#{game[:competition_id]}",
+                                           required: true %>
+                      <img src="<%= game[:home_team][:logo] %>"
+                           alt="<%= game[:home_team][:name] %>"
+                           class="w-6 h-6 sm:w-8 sm:h-8 object-contain flex-shrink-0">
+                      <label for="home_<%= game[:competition_id] %>" class="cursor-pointer font-medium text-gray-800 text-xs sm:text-sm">
+                        <%= game[:home_team][:abbreviation] %>
+                        <% if game_started && game[:home_team][:score] %>
+                          <span class="ml-1 text-lg font-bold"><%= game[:home_team][:score] %></span>
+                        <% end %>
+                      </label>
+                    </div>
                   </div>
                 </div>
               <% end %>
             </div>
+          <% end %>
+
+          <!-- Tiebreaker Separator -->
+          <div class="border-t-2 border-gray-200 my-6 sm:my-8"></div>
+
+          <!-- Tiebreaker -->
+          <div class="mb-6">
+            <label class="block text-lg sm:text-xl font-bold mb-2 text-gray-800">
+              Tiebreaker
+            </label>
+            <p class="text-sm text-gray-600 mb-4">
+              Enter the total combined points you think will be scored in Monday Night Football.
+            </p>
+            <div class="flex items-center gap-2">
+              <%= f.number_field :tiebreaker,
+                                 min: 0,
+                                 required: true,
+                                 disabled: @submission.persisted? && @games_locked,
+                                 class: "border-2 border-gray-300 rounded-lg px-4 py-2 w-24 text-lg font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-colors",
+                                 placeholder: "0" %>
+              <span class="text-gray-600 font-medium">total points</span>
+            </div>
           </div>
-        <% end %>
 
-        <!-- Tiebreaker -->
-        <div class="bg-blue-50 border-2 border-blue-200 rounded-lg p-6">
-          <label class="block text-lg font-semibold mb-2">
-            Monday Night Football Tiebreaker
-          </label>
-          <p class="text-sm text-gray-600 mb-4">
-            Enter the total combined points you think will be scored in the Monday Night Football game.
-          </p>
-          <%= f.number_field :tiebreaker,
-                             min: 0,
-                             required: true,
-                             disabled: @submission.persisted? && @games_locked,
-                             class: "border-2 border-gray-300 rounded px-4 py-2 w-32 text-lg",
-                             placeholder: "0" %>
-          <span class="ml-2 text-gray-600">total points</span>
-        </div>
-
-        <!-- Submit Button -->
-        <div class="flex justify-center">
+          <!-- Submit Button -->
           <button type="submit"
                   <%= "disabled" if @submission.persisted? && @games_locked %>
-                  class="px-8 py-3 bg-green-600 text-white font-bold text-lg rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed">
+                  class="w-full py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-bold text-lg rounded-lg hover:from-indigo-600 hover:to-purple-700 transition-all transform hover:scale-105 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed disabled:transform-none">
             <%= @submission.persisted? ? "Update Picks" : "Submit Picks" %>
           </button>
         </div>
       <% end %>
     <% else %>
-      <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded">
-        No games available for Week <%= @week %>.
+      <div class="bg-white rounded-lg shadow-xl p-6 sm:p-8">
+        <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded">
+          No games available for Week <%= @week %>.
+        </div>
       </div>
     <% end %>
   </div>
