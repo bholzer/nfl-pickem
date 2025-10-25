@@ -25,15 +25,18 @@ class SubmissionsController < ApplicationController
     end
 
     # Get game data and scoring breakdown
-    @breakdown = ScoringService.submission_breakdown(@submission, week: @token_data[:week])
-    @scoreboard = EspnScoreboard.new(week: @token_data[:week])
+    scoring = ScoringService.new(week: @token_data[:week])
+    @breakdown = scoring.breakdown(@submission)
+    @scoreboard = scoring.scoreboard
   end
 
   def index
     # Show standings for a specific week
     week = params[:week]&.to_i || EspnScoreboard.current_week
-    @standings = ScoringService.calculate_standings(week: week)
+    scoring = ScoringService.new(week: week)
+    @standings = scoring.standings
     @week = week
+    @scoreboard = scoring.scoreboard
   end
 
   private

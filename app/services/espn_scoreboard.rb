@@ -29,13 +29,19 @@ class EspnScoreboard
   end
 
   def games
+    central_tz = ActiveSupport::TimeZone["America/Chicago"]
+
     @raw_scoreboard["events"].map do |event|
       competition = event["competitions"]&.first
       next unless competition
 
+      # Parse UTC time and convert to Central Time
+      utc_time = DateTime.parse(event["date"])
+      central_time = utc_time.in_time_zone(central_tz)
+
       {
         competition_id: competition["id"],
-        date: DateTime.parse(event["date"]),
+        date: central_time,
         status: event["status"]["type"]["name"], # "STATUS_SCHEDULED", "STATUS_IN_PROGRESS", "STATUS_FINAL"
         status_detail: event["status"]["type"]["detail"],
         home_team: parse_team(competition["competitors"].find { |c| c["homeAway"] == "home" }),
@@ -53,13 +59,34 @@ class EspnScoreboard
     games.min_by { |game| game[:date] }[:date]
   end
 
+  # Returns map of competition_id => winning_team_id (only for completed games)
   def results
-    # Returns map of competition_id => winning_team_id (only for completed games)
-    results = {}
-    games.each do |game|
-      results[game[:competition_id]] = game[:winner_id] if game[:winner_id]
-    end
-    results
+    Hash[
+      games.select { |game| game[:status] == "STATUS_FINAL" }.map do |game|
+        [ game[:competition_id], game[:winner_id] ]
+      end
+    ]
+  end
+
+  def all_games_complete?
+    games.all? { |g| g[:status] == "STATUS_FINAL" }
+  end
+
+  def remaining_games
+    games.select { |g| g[:status] != "STATUS_FINAL" }
+  end
+
+  def monday_night_total
+    # Find games on Monday
+    monday_games = games.select { |game| game[:date].monday? }
+    return nil if monday_games.empty?
+
+    # Only return total if game is final
+    return nil unless monday_games.any? { |g| g[:status] == "STATUS_FINAL" }
+
+    home_score = monday_games.map { |g| g[:home_team][:score] }.sum
+    away_score = monday_games.map { |g| g[:away_team][:score] }.sum
+    home_score + away_score
   end
 
   private
