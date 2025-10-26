@@ -1,5 +1,5 @@
 class SubmissionsController < ApplicationController
-  before_action :verify_token, only: [ :new, :create, :update, :show ]
+  before_action :verify_token, only: [ :index, :new, :create, :update, :show ]
   before_action :find_or_initialize_submission, only: [ :new, :create, :update ]
   before_action :load_games, only: [ :new, :create, :update ]
 
@@ -31,12 +31,8 @@ class SubmissionsController < ApplicationController
   end
 
   def index
-    # Show standings for a specific week
-    week = params[:week]&.to_i || EspnScoreboard.current_week
-    scoring = ScoringService.new(week: week)
-    @standings = scoring.standings
-    @week = week
-    @scoreboard = scoring.scoreboard
+    # Show all submissions for the current user
+    @submissions = @current_user.submissions.order(week: :desc)
   end
 
   private

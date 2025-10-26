@@ -15,8 +15,10 @@
   <% end %>
 <% end %>
 
+<% if eliminated.any? %>
 ### <%= "Eliminated" %> :skull:
-<% eliminated.each do |eliminated| %>
+  <% eliminated.each do |eliminated| %>
 ~~<%= eliminated[:user].discord_username %>: <%= eliminated[:correct_picks] %> <%= "point".pluralize(eliminated[:correct_picks]) %>~~
+  <% end %>
 <% end %>
 

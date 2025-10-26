@@ -1,9 +1,12 @@
 Rails.application.routes.draw do
+  # Standings (leaderboard)
+  resources :standings, only: [:index]
+
   # Submissions routes
   resources :submissions, only: [:index, :show, :new, :create, :update]
 
   # Set root to standings page
-  root "submissions#index"
+  root "standings#index"
 
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
   # Can be used by load balancers and uptime monitors to verify that the app is live.

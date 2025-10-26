@@ -1,38 +1,35 @@
 <div class="py-8">
   <div class="max-w-6xl mx-auto px-4">
     <div class="bg-white rounded-lg shadow-xl p-6 sm:p-8 mb-6">
-      <h1 class="text-3xl sm:text-4xl font-bold mb-2 text-gray-800 text-center">NFL Pick'em Standings</h1>
-      <p class="text-xl text-gray-600 text-center">Week <%= @week %></p>
+      <h1 class="text-3xl sm:text-4xl font-bold mb-2 text-gray-800 text-center">My Submissions</h1>
+      <p class="text-xl text-gray-600 text-center"><%= @current_user.discord_username %></p>
     </div>
 
-    <% if @standings && @standings.any? %>
+    <% if @submissions.any? %>
       <div class="bg-white shadow-xl rounded-lg overflow-hidden">
         <table class="w-full">
           <thead class="bg-gray-800 text-white">
             <tr>
-              <th class="px-6 py-4 text-left">Rank</th>
-              <th class="px-6 py-4 text-left">Player</th>
-              <th class="px-6 py-4 text-center">Correct Picks</th>
+              <th class="px-6 py-4 text-left">Week</th>
+              <th class="px-6 py-4 text-center">Picks Submitted</th>
+              <th class="px-6 py-4 text-center">Tiebreaker</th>
+              <th class="px-6 py-4 text-center">Submitted At</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-200">
-            <%
-              current_rank = 1
-              @standings.each_with_index do |standing, index|
-                # Handle ties: if this person has fewer correct picks than previous, update rank
-                if index > 0 && standing[:correct_picks] < @standings[index - 1][:correct_picks]
-                  current_rank = index + 1
-                end
-            %>
-              <tr class="<%= current_rank <= 3 ? 'bg-yellow-50' : 'hover:bg-gray-50' %>">
+            <% @submissions.each do |submission| %>
+              <tr class="hover:bg-gray-50">
                 <td class="px-6 py-4 font-bold text-lg">
-                  #<%= current_rank %>
+                  Week <%= submission.week %>
                 </td>
-                <td class="px-6 py-4 font-semibold">
-                  <%= standing[:user].discord_username %>
+                <td class="px-6 py-4 text-center text-gray-600">
+                  <%= submission.picks.size %>
                 </td>
-                <td class="px-6 py-4 text-center text-lg font-bold text-green-600">
-                  <%= standing[:correct_picks] %>
+                <td class="px-6 py-4 text-center text-gray-600">
+                  <%= submission.tiebreaker %>
+                </td>
+                <td class="px-6 py-4 text-center text-gray-500 text-sm">
+                  <%= submission.created_at.strftime("%b %d, %Y at %I:%M %p") %>
                 </td>
               </tr>
             <% end %>
@@ -42,7 +39,7 @@
     <% else %>
       <div class="bg-white rounded-lg shadow-xl p-6 sm:p-8">
         <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded text-center">
-          No submissions yet for Week <%= @week %>.
+          You haven't submitted any picks yet.
         </div>
       </div>
     <% end %>
