@@ -39,12 +39,20 @@ class ScoringService
     if contenders.size == 1
       contenders.first[:winner] = true
     elsif @scoreboard.all_games_complete?
-      min_tiebreak_diff = contenders.map { |c| c[:submission].tiebreaker - @scoreboard.monday_night_total }.min
-      winners = contenders.select { |c| c[:submission].tiebreaker - @scoreboard.monday_night_total == min_tiebreak_diff }
+      monday_night_total = @scoreboard.monday_night_total || 0
+      min_tiebreak_diff = contenders.map { |c| (c[:submission].tiebreaker - monday_night_total).abs }.min
+      winners = contenders.select { |c| (c[:submission].tiebreaker - monday_night_total).abs == min_tiebreak_diff }
       winners.each { |w| w[:winner] = true }
     end
 
-    submission_scores
+    # Sort by correct picks (descending), then by tiebreaker proximity if all games complete
+    submission_scores.sort_by do |s|
+      if @scoreboard.all_games_complete? && @scoreboard.monday_night_total
+        [ -s[:correct_picks], (s[:submission].tiebreaker - @scoreboard.monday_night_total).abs ]
+      else
+        [ -s[:correct_picks], s[:submission].tiebreaker ]
+      end
+    end
   end
 
   # Class method for filtering valid picks (used during submission)
