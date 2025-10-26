@@ -6,10 +6,11 @@ class Submission < ApplicationRecord
   validates :picks, presence: true
 
   def summary(scoreboard: EspnScoreboard.new(week: week))
-    picks_summary = picks.map do |competition_id, selected_team_id|
-      game = scoreboard.games.find { |g| g[:competition_id] == competition_id }
-      selected_team = [ game[:home_team], game[:away_team] ].find { |t| t[:id] == selected_team_id }
-      "#{game[:home_team][:name]}/#{game[:away_team][:name]}: #{selected_team[:name]}"
+    sorted_games = scoreboard.games.sort_by { |g| [ g[:date], g[:competition_id] ] }
+
+    picks_summary = sorted_games.map do |game|
+      selected_team = [ game[:home_team], game[:away_team] ].find { |t| t[:id] == picks[game[:competition_id]] }
+      "#{game[:name]}: #{selected_team[:name]}"
     end.join("\n")
 
     <<~SUMMARY.strip

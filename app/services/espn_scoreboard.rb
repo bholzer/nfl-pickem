@@ -43,6 +43,7 @@ class EspnScoreboard
         competition_id: competition["id"],
         date: central_time,
         status: event["status"]["type"]["name"], # "STATUS_SCHEDULED", "STATUS_IN_PROGRESS", "STATUS_FINAL"
+        name: event["name"],
         status_detail: event["status"]["type"]["detail"],
         home_team: parse_team(competition["competitors"].find { |c| c["homeAway"] == "home" }),
         away_team: parse_team(competition["competitors"].find { |c| c["homeAway"] == "away" }),
