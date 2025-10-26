@@ -19,7 +19,7 @@ class Submission < ApplicationRecord
     SUMMARY
   end
 
-  def hash
+  def verification_hash
     Digest::SHA256.hexdigest(summary)
   end
 end

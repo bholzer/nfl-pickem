@@ -2,5 +2,5 @@
 Use this hash to verify the winner's picks
 
 <% submissions.each do |submission| %>
-**<%= submission.user.discord_username %>**: `<%= submission.hash %>`
+**<%= submission.user.discord_username %>**: `<%= submission.verification_hash %>`
 <% end %>
