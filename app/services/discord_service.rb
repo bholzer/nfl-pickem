@@ -91,6 +91,11 @@ class DiscordService
     standings = ScoringService.new(week: week).standings
     return unless standings.any?
 
+    # send_channel_message(
+    #   pickem_channel_id,
+    #   render_message("standings", standings: standings, week: week)
+    # )
+
     send_direct_message(
       test_user_id,
       render_message("standings", standings: standings, week: week)
@@ -122,6 +127,10 @@ class DiscordService
   end
 
   def test_user_id
-    User.find(1).discord_user_id
+    User.find_by(discord_username: "BeanAndCookies").discord_user_id
+  end
+
+  def pickem_channel_id
+    "1420809438138466364"
   end
 end
