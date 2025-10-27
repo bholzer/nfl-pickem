@@ -91,21 +91,19 @@ class DiscordService
     standings = ScoringService.new(week: week).standings
     return unless standings.any?
 
-    # send_channel_message(
-    #   pickem_channel_id,
-    #   render_message("standings", standings: standings, week: week)
-    # )
-
-    send_direct_message(
-      test_user_id,
+    send_channel_message(
+      pickem_channel_id,
       render_message("standings", standings: standings, week: week)
     )
   end
 
   def send_hashes(week)
-    send_direct_message(
-      test_user_id,
-      render_message("hashes", submissions: Submission.where(week: week), week: week)
+    submissions = Submission.where(week: week)
+    return unless submissions.any?
+
+    send_channel_message(
+      pickem_channel_id,
+      render_message("hashes", submissions: submissions, week: week)
     )
   end
 
