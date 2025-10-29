@@ -1,5 +1,6 @@
 class SubmissionsController < ApplicationController
-  before_action :verify_token, only: [ :index, :new, :create, :update, :show ]
+  before_action :authenticate_user, only: [ :index, :new, :create, :update, :show ]
+  before_action :set_week, only: [ :new, :create, :update, :show ]
   before_action :find_or_initialize_submission, only: [ :new, :create, :update ]
   before_action :load_games, only: [ :new, :create, :update ]
 
@@ -17,15 +18,15 @@ class SubmissionsController < ApplicationController
   end
 
   def show
-    @submission = Submission.find_by(user: @current_user, week: @token_data[:week])
+    @submission = Submission.find_by(user: @current_user, week: @week)
 
     unless @submission
-      redirect_to new_submission_path(token: params[:token]), alert: "No submission found for this week."
+      redirect_to new_submission_path(week: @week), alert: "No submission found for this week."
       return
     end
 
     # Get game data and scoring breakdown
-    scoring = ScoringService.new(week: @token_data[:week])
+    scoring = ScoringService.new(week: @week)
     @breakdown = scoring.breakdown(@submission)
     @scoreboard = scoring.scoreboard
   end
@@ -37,38 +38,30 @@ class SubmissionsController < ApplicationController
 
   private
 
-  def verify_token
-    token = params[:token]
-
-    unless token
-      render json: { error: "Token required" }, status: :unauthorized
-      return
+  def set_week
+    # Week can come from token (initial access) or params (navigation)
+    if params[:token].present?
+      token_data = JwtService.verify(params[:token])
+      @week = token_data[:week] if token_data
     end
 
-    @token_data = JwtService.verify(token)
+    # Fall back to params or raise error
+    @week ||= params[:week]
 
-    unless @token_data
-      render json: { error: "Invalid or expired token" }, status: :unauthorized
-      return
+    unless @week
+      render json: { error: "Week parameter required" }, status: :bad_request
     end
-
-    # Find or create user based on token data
-    @current_user = User.find_or_create_by(
-      discord_user_id: @token_data[:user_id],
-      discord_username: @token_data[:username]
-    )
   end
 
   def find_or_initialize_submission
     @submission = Submission.find_or_initialize_by(
       user: @current_user,
-      week: @token_data[:week]
+      week: @week
     )
   end
 
   def load_games
-    @scoreboard = EspnScoreboard.new(week: @token_data[:week])
-    @week = @token_data[:week]
+    @scoreboard = EspnScoreboard.new(week: @week)
   end
 
   def submission_params
@@ -80,7 +73,7 @@ class SubmissionsController < ApplicationController
 
     # Prevent editing existing submissions once games have started
     if @submission.persisted? && @games_locked
-      redirect_to submission_path(@submission, token: params[:token]),
+      redirect_to submission_path(@submission, week: @week),
                   alert: "Cannot edit picks after games have started."
       return
     end
@@ -88,13 +81,13 @@ class SubmissionsController < ApplicationController
     # Filter out picks for games that have already started (for late submissions)
     valid_picks = ScoringService.filter_valid_picks(
       submission_params[:picks] || {},
-      week: @token_data[:week]
+      week: @week
     )
 
     @submission.assign_attributes(submission_params.except(:picks).merge(picks: valid_picks))
 
     if @submission.save
-      redirect_to submission_path(@submission, token: params[:token]),
+      redirect_to submission_path(@submission, week: @week),
                   notice: "Picks #{@submission.previously_new_record? ? 'submitted' : 'updated'} successfully!"
     else
       @earliest_game_time = @scoreboard.earliest_game_time

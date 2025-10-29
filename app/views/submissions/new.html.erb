@@ -3,7 +3,7 @@
     <div class="bg-white rounded-lg shadow-xl p-6 sm:p-8 mb-6">
       <h1 class="text-2xl sm:text-3xl font-bold mb-2 text-gray-800">NFL Pick'em - Week <%= @week %></h1>
       <p class="text-gray-600 mb-4">
-        Welcome, <strong><%= @token_data[:username] %></strong>
+        Welcome, <strong><%= @current_user.discord_username %></strong>
       </p>
 
       <% if @games_locked %>
@@ -25,7 +25,7 @@
 
     <% if @scoreboard.games&.any? %>
       <%= form_with model: @submission do |f| %>
-        <%= hidden_field_tag :token, params[:token] %>
+        <%= hidden_field_tag :week, @week %>
 
         <div class="bg-white rounded-lg shadow-xl p-6 sm:p-8">
           <!-- Games by Day -->

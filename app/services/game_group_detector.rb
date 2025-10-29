@@ -11,7 +11,7 @@ class GameGroupDetector
       thursday: games.select { |g| g[:date].thursday? },
       sunday_early: games.select { |g| g[:date].sunday? && g[:date].hour < 14 },
       sunday_late: games.select { |g| g[:date].sunday? && g[:date].hour.between?(14, 17) },
-      sunday_night: games.select { |g| g[:date].sunday? && g[:date].hour >= 1 },
+      sunday_night: games.select { |g| g[:date].sunday? && g[:date].hour >= 17 },
       monday: games.select { |g| g[:date].monday? }
     }.reject { |_, games| games.empty? }
   end

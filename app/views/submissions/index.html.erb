@@ -14,6 +14,7 @@
               <th class="px-6 py-4 text-center">Picks Submitted</th>
               <th class="px-6 py-4 text-center">Tiebreaker</th>
               <th class="px-6 py-4 text-center">Submitted At</th>
+              <th class="px-6 py-4 text-center">Actions</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-200">
@@ -30,6 +31,9 @@
                 </td>
                 <td class="px-6 py-4 text-center text-gray-500 text-sm">
                   <%= submission.created_at.strftime("%b %d, %Y at %I:%M %p") %>
+                </td>
+                <td class="px-6 py-4 text-center">
+                  <%= link_to "View", submission_path(submission, week: submission.week), class: "px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors inline-block" %>
                 </td>
               </tr>
             <% end %>

@@ -95,7 +95,8 @@
     </div>
 
     <div class="bg-white rounded-lg shadow-xl p-6 sm:p-8">
-      <%= link_to "Back to Standings", submissions_path, class: "block w-full py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-bold text-lg rounded-lg hover:from-indigo-600 hover:to-purple-700 transition-all transform hover:scale-105 text-center" %>
+      <%= link_to "Edit Picks", new_submission_path(week: @week), class: "block w-full py-4 mb-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold text-lg rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all transform hover:scale-105 text-center" %>
+      <%= link_to "All My Submissions", submissions_path, class: "block w-full py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-bold text-lg rounded-lg hover:from-indigo-600 hover:to-purple-700 transition-all transform hover:scale-105 text-center" %>
     </div>
   </div>
 </div>
