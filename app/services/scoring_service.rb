@@ -55,6 +55,32 @@ class ScoringService
     end
   end
 
+  # Generate a detailed breakdown for a single submission
+  # @param submission [Submission]
+  # @return [Hash] Breakdown with user info, correct picks count, and pick details
+  def breakdown(submission)
+    picks_with_details = submission.picks.map do |competition_id, selected_team_id|
+      game = @scoreboard.games.find { |g| g[:competition_id] == competition_id }
+      winning_team_id = @scoreboard.results[competition_id]
+
+      {
+        competition_id: competition_id,
+        selected_team_id: selected_team_id,
+        winning_team_id: winning_team_id,
+        correct: selected_team_id == winning_team_id,
+        game: game
+      }
+    end
+
+    {
+      week: @week,
+      user: submission.user.discord_username,
+      correct_picks: count_correct_picks(submission),
+      tiebreaker: submission.tiebreaker,
+      picks: picks_with_details
+    }
+  end
+
   # Class method for filtering valid picks (used during submission)
   # @param picks_data [Hash] Hash of competition_id => selected_team_id
   # @param week [Integer] NFL week number
