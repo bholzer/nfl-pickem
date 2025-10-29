@@ -40,4 +40,11 @@ class ApplicationController < ActionController::Base
       false
     end
   end
+
+  def require_admin
+    unless @current_user&.admin?
+      render json: { error: "Admin access required" }, status: :forbidden
+      false
+    end
+  end
 end

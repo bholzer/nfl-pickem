@@ -1,0 +1,101 @@
+<div class="py-8">
+  <div class="max-w-6xl mx-auto px-4">
+    <div class="bg-white rounded-lg shadow-xl p-6 sm:p-8 mb-6">
+      <h1 class="text-2xl sm:text-3xl font-bold mb-2 text-gray-800">Admin View: Week <%= @breakdown[:week] %> Picks</h1>
+      <p class="text-gray-600">
+        Player: <strong><%= @breakdown[:user] %></strong>
+      </p>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-xl p-6 sm:p-8 mb-6">
+      <div class="grid grid-cols-2 gap-4 text-center">
+        <div>
+          <div class="text-3xl font-bold text-green-600"><%= @breakdown[:correct_picks] %></div>
+          <div class="text-gray-600">Correct Picks</div>
+        </div>
+        <div>
+          <div class="text-3xl font-bold text-blue-600"><%= @breakdown[:tiebreaker] %></div>
+          <div class="text-gray-600">Tiebreaker</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white shadow-xl rounded-lg overflow-hidden mb-6">
+      <table class="w-full">
+        <thead class="bg-gray-800 text-white">
+          <tr>
+            <th class="px-4 py-3 text-left">Game</th>
+            <th class="px-4 py-3 text-center">Their Pick</th>
+            <th class="px-4 py-3 text-center">Result</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200">
+          <% @breakdown[:picks].each do |pick| %>
+            <% game = pick[:game] %>
+            <% next unless game %>
+            <% is_correct = pick[:correct] %>
+            <% is_completed = pick[:winning_team_id].present? %>
+
+            <tr class="<%= is_correct ? 'bg-green-50' : (is_completed ? 'bg-red-50' : 'bg-gray-50') %>">
+              <td class="px-4 py-3">
+                <div class="flex items-center space-x-2 mb-1">
+                  <img src="<%= game[:away_team][:logo] %>" alt="<%= game[:away_team][:abbreviation] %>" class="w-6 h-6">
+                  <span><%= game[:away_team][:abbreviation] %></span>
+                  <% if game[:away_team][:score] %>
+                    <span class="font-bold"><%= game[:away_team][:score] %></span>
+                  <% end %>
+                  <% if pick[:winning_team_id] == game[:away_team][:id] %>
+                    <span class="text-green-600 font-bold">✓</span>
+                  <% end %>
+                </div>
+                <div class="flex items-center space-x-2">
+                  <img src="<%= game[:home_team][:logo] %>" alt="<%= game[:home_team][:abbreviation] %>" class="w-6 h-6">
+                  <span><%= game[:home_team][:abbreviation] %></span>
+                  <% if game[:home_team][:score] %>
+                    <span class="font-bold"><%= game[:home_team][:score] %></span>
+                  <% end %>
+                  <% if pick[:winning_team_id] == game[:home_team][:id] %>
+                    <span class="text-green-600 font-bold">✓</span>
+                  <% end %>
+                </div>
+                <div class="text-xs text-gray-500 mt-1">
+                  <%= game[:date].strftime("%a, %b %d at %l:%M %p") %>
+                </div>
+              </td>
+
+              <td class="px-4 py-3 text-center font-semibold">
+                <% selected_team = [game[:away_team], game[:home_team]].find { |t| t[:id] == pick[:selected_team_id] } %>
+                <% if selected_team %>
+                  <div class="flex items-center justify-center space-x-2">
+                    <img src="<%= selected_team[:logo] %>" alt="<%= selected_team[:abbreviation] %>" class="w-6 h-6">
+                    <span><%= selected_team[:abbreviation] %></span>
+                  </div>
+                <% end %>
+              </td>
+
+              <td class="px-4 py-3 text-center">
+                <% if is_completed %>
+                  <% if is_correct %>
+                    <span class="px-3 py-1 bg-green-500 text-white rounded-full text-sm font-semibold">
+                      ✓ Correct
+                    </span>
+                  <% else %>
+                    <span class="px-3 py-1 bg-red-500 text-white rounded-full text-sm font-semibold">
+                      ✗ Wrong
+                    </span>
+                  <% end %>
+                <% else %>
+                  <span class="text-gray-400 text-sm">In Progress</span>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-xl p-6 sm:p-8">
+      <%= link_to "← Back to All Submissions", admin_submissions_path(week: @week), class: "block w-full py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-bold text-lg rounded-lg hover:from-indigo-600 hover:to-purple-700 transition-all transform hover:scale-105 text-center" %>
+    </div>
+  </div>
+</div>

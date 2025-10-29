@@ -1,5 +1,11 @@
 Rails.application.routes.draw do
-  mount MissionControl::Jobs::Engine, at: "/jobs"
+  namespace :admin do
+    resources :submissions, only: [ :index, :show ]
+    resources :jobs, only: [ :index, :create ]
+  end
+
+  # Mission Control - authentication handled by custom constraint
+  mount MissionControl::Jobs::Engine, at: "/admin/mission_control"
 
   # Standings (leaderboard)
   resources :standings, only: [ :index ]

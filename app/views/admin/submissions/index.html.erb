@@ -1,0 +1,68 @@
+<div class="py-8">
+  <div class="max-w-6xl mx-auto px-4">
+    <div class="bg-white rounded-lg shadow-xl p-6 sm:p-8 mb-6">
+      <h1 class="text-3xl sm:text-4xl font-bold mb-2 text-gray-800 text-center">Admin: All Submissions</h1>
+      <p class="text-xl text-gray-600 text-center">Week <%= @week %></p>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-xl p-6 mb-6">
+      <h2 class="text-lg font-semibold mb-4">Change Week</h2>
+      <div class="flex gap-2 flex-wrap">
+        <% (1..18).each do |w| %>
+          <%= link_to "Week #{w}", admin_submissions_path(week: w),
+              class: "px-4 py-2 rounded-lg #{w == @week.to_i ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}" %>
+        <% end %>
+      </div>
+    </div>
+
+    <% if @submissions.any? %>
+      <div class="bg-white shadow-xl rounded-lg overflow-hidden mb-6">
+        <table class="w-full">
+          <thead class="bg-gray-800 text-white">
+            <tr>
+              <th class="px-6 py-4 text-left">Player</th>
+              <th class="px-6 py-4 text-center">Correct Picks</th>
+              <th class="px-6 py-4 text-center">Tiebreaker</th>
+              <th class="px-6 py-4 text-center">Submitted At</th>
+              <th class="px-6 py-4 text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200">
+            <% @submissions.each do |submission| %>
+              <% breakdown = @scoring.breakdown(submission) %>
+              <tr class="hover:bg-gray-50">
+                <td class="px-6 py-4 font-bold">
+                  <%= submission.user.discord_username %>
+                </td>
+                <td class="px-6 py-4 text-center">
+                  <span class="text-2xl font-bold text-green-600"><%= breakdown[:correct_picks] %></span>
+                  <span class="text-gray-500">/ <%= breakdown[:total_games] %></span>
+                </td>
+                <td class="px-6 py-4 text-center text-gray-600">
+                  <%= submission.tiebreaker %>
+                </td>
+                <td class="px-6 py-4 text-center text-gray-500 text-sm">
+                  <%= submission.created_at.strftime("%b %d, %Y at %I:%M %p") %>
+                </td>
+                <td class="px-6 py-4 text-center">
+                  <%= link_to "View Details", admin_submission_path(submission), class: "px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors inline-block" %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="bg-white rounded-lg shadow-xl p-6 sm:p-8">
+        <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded text-center">
+          No submissions found for Week <%= @week %>.
+        </div>
+      </div>
+    <% end %>
+
+    <div class="bg-white rounded-lg shadow-xl p-6 sm:p-8">
+      <%= link_to "Admin Dashboard", admin_jobs_path, class: "block w-full py-4 mb-4 bg-gradient-to-r from-purple-500 to-purple-600 text-white font-bold text-lg rounded-lg hover:from-purple-600 hover:to-purple-700 transition-all transform hover:scale-105 text-center" %>
+      <%= link_to "Public Standings", root_path, class: "block w-full py-4 bg-gradient-to-r from-indigo-500 to-blue-600 text-white font-bold text-lg rounded-lg hover:from-indigo-600 hover:to-blue-700 transition-all transform hover:scale-105 text-center" %>
+    </div>
+  </div>
+</div>
