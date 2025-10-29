@@ -1,9 +1,11 @@
 Rails.application.routes.draw do
+  mount MissionControl::Jobs::Engine, at: "/jobs"
+
   # Standings (leaderboard)
-  resources :standings, only: [:index]
+  resources :standings, only: [ :index ]
 
   # Submissions routes
-  resources :submissions, only: [:index, :show, :new, :create, :update]
+  resources :submissions, only: [ :index, :show, :new, :create, :update ]
 
   # Set root to standings page
   root "standings#index"
