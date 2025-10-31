@@ -1,4 +1,6 @@
 class StandingsController < ApplicationController
+  before_action :authenticate_user
+
   def index
     # Show standings for a specific week
     @week = params[:week]&.to_i || EspnScoreboard.current_week

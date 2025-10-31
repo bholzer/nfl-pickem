@@ -27,9 +27,10 @@ class ApplicationController < ActionController::Base
       # Clear invalid session
       reset_session
     elsif params[:token].present?
+      # JWT token authentication (for Discord DM submission links)
       token_data = JwtService.verify(params[:token])
       unless token_data
-        render json: { error: "Invalid or expired token" }, status: :unauthorized
+        redirect_to sign_in_path, alert: "Invalid or expired token. Please sign in."
         return
       end
 
@@ -39,8 +40,12 @@ class ApplicationController < ActionController::Base
       )
 
       session[:user_id] = @current_user.id
-    else
-      render json: { error: "Authentication required" }, status: :unauthorized
+      return
+    end
+
+    # No authentication found, redirect to sign-in
+    unless @current_user
+      redirect_to sign_in_path, alert: "Please sign in to continue."
       false
     end
   end

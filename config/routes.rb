@@ -14,12 +14,13 @@ Rails.application.routes.draw do
   resources :submissions, only: [ :index, :show, :new, :create, :update ]
 
   # OAuth authentication routes
+  get "/sign_in", to: "sessions#new", as: :sign_in
   get "/auth/:provider/callback", to: "sessions#create"
   get "/auth/failure", to: "sessions#failure"
   delete "/logout", to: "sessions#destroy", as: :logout
 
-  # Set root to standings page
-  root "standings#index"
+  # Set root to sign-in page
+  root "sessions#new"
 
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
   # Can be used by load balancers and uptime monitors to verify that the app is live.
