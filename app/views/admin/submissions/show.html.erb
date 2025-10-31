@@ -40,21 +40,18 @@
                 <%= game[:date].strftime("%a %l:%M %p") %>
               </div>
               <div class="flex items-center gap-1.5">
-                <!-- Game Status -->
-                <% if game[:status] == "STATUS_FINAL" %>
-                  <span class="px-1.5 py-0.5 bg-gray-600 text-white text-xs font-medium rounded">Final</span>
-                <% elsif game[:status] == "STATUS_IN_PROGRESS" %>
+                <% if game[:status] == "STATUS_IN_PROGRESS" %>
+                  <!-- Game Status -->
                   <span class="px-1.5 py-0.5 bg-blue-600 text-white text-xs font-medium rounded">
                     <%= game[:status_detail] %>
                   </span>
                 <% end %>
-
-                <!-- Result Badge -->
                 <% if is_completed %>
+                  <!-- Result Icon -->
                   <% if is_correct %>
-                    <span class="px-1.5 py-0.5 bg-green-600 text-white text-xs font-semibold rounded">✓</span>
+                    <span class="text-green-600 text-lg">✓</span>
                   <% else %>
-                    <span class="px-1.5 py-0.5 bg-red-600 text-white text-xs font-semibold rounded">✗</span>
+                    <span class="text-red-600 text-lg">✗</span>
                   <% end %>
                 <% end %>
               </div>
