@@ -645,14 +645,16 @@ Tailwind's default breakpoints (mobile-first):
 ### Pick Result Indicators
 ```html
 <!-- Correct pick (use entire row background) -->
-<div class="bg-green-50">
+<div class="bg-green-50 dark:bg-green-900/30">
 
 <!-- Incorrect pick (use entire row background) -->
-<div class="bg-red-50">
+<div class="bg-red-50 dark:bg-red-900/30">
 
 <!-- No result yet -->
-<div class="bg-white">
+<div class="bg-white dark:bg-gray-900">
 ```
+
+**Note**: Dark mode uses 30% opacity for subtle indication without being overwhelming.
 
 ### Score Display
 ```html

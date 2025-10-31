@@ -218,3 +218,29 @@ Templates in `app/views/discord_messages/`:
 
 ## UI Design
 The UI design is described/defined by @DESIGN_SYSTEM.md
+
+### Dark Mode Implementation
+
+The application supports dark mode with both system preference detection and manual toggle:
+
+**Tailwind v4 Configuration** (`app/assets/stylesheets/application.tailwind.css`):
+```css
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+```
+
+This configures Tailwind v4 to use class-based dark mode (`.dark` on `<html>` element) instead of media queries.
+
+**Stimulus Controller** (`app/javascript/controllers/dark_mode_controller.js`):
+- Attached to `<html>` element via `data-controller="dark-mode"`
+- On connect: checks localStorage for saved preference, falls back to system preference
+- `toggle()` method: switches between light and dark modes
+- Saves user preference to localStorage as `theme` ('light' or 'dark')
+- Listens for system preference changes and updates accordingly if no manual preference set
+
+**Layout Configuration** (`app/views/layouts/application.html.erb`):
+- Uses `stylesheet_link_tag "tailwind"` to reference the built CSS from `app/assets/builds/tailwind.css`
+- `<html>` element has `data-controller="dark-mode"` to initialize the dark mode controller
+- Dark mode toggle button in navigation calls `data-action="click->dark-mode#toggle"`
+
+**Important**: The built CSS file must be referenced as `"tailwind"` not `:app` to properly load from the builds directory.

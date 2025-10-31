@@ -8,7 +8,7 @@
       <% is_completed = pick[:winning_team_id].present? %>
       <% selected_team = [game[:away_team], game[:home_team]].find { |t| t[:id] == pick[:selected_team_id] } %>
 
-      <div class="px-3 sm:px-4 py-3 <%= is_correct ? 'bg-green-50 dark:bg-green-950' : (is_completed ? 'bg-red-50 dark:bg-red-950' : '') %>">
+      <div class="px-3 sm:px-4 py-3 <%= is_correct ? 'bg-green-50 dark:bg-green-900/30' : (is_completed ? 'bg-red-50 dark:bg-red-900/30' : '') %>">
         <!-- Time and Status Row -->
         <div class="flex items-center justify-between mb-2">
           <div class="text-xs text-gray-500 dark:text-gray-400">
