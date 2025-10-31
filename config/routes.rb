@@ -13,6 +13,11 @@ Rails.application.routes.draw do
   # Submissions routes
   resources :submissions, only: [ :index, :show, :new, :create, :update ]
 
+  # OAuth authentication routes
+  get "/auth/:provider/callback", to: "sessions#create"
+  get "/auth/failure", to: "sessions#failure"
+  delete "/logout", to: "sessions#destroy", as: :logout
+
   # Set root to standings page
   root "standings#index"
 
