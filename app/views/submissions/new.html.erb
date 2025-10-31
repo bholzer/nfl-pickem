@@ -48,66 +48,66 @@
                 <% pick_disabled = game_started || (@submission.persisted? && @games_locked) %>
 
                 <div class="px-3 sm:px-4 py-3 <%= game_started ? 'bg-gray-50' : '' %>">
-                  <!-- Game Time & Status -->
+                  <!-- Time and Status Row -->
                   <div class="flex items-center justify-between mb-2">
                     <div class="text-xs text-gray-500">
-                      <%= game[:date].strftime("%l:%M %p") %>
+                      <%= game[:date].strftime("%a %l:%M %p") %>
                     </div>
                     <% if game_started %>
-                      <span class="px-1.5 py-0.5 bg-red-100 text-red-700 text-xs font-medium rounded">
-                        <%= game[:status_detail] %>
-                      </span>
+                      <% if game[:status] == "STATUS_FINAL" %>
+                        <span class="px-1.5 py-0.5 bg-gray-600 text-white text-xs font-medium rounded">Final</span>
+                      <% elsif game[:status] == "STATUS_IN_PROGRESS" %>
+                        <span class="px-1.5 py-0.5 bg-blue-600 text-white text-xs font-medium rounded">
+                          <%= game[:status_detail] %>
+                        </span>
+                      <% else %>
+                        <span class="px-1.5 py-0.5 bg-red-100 text-red-700 text-xs font-medium rounded">Started</span>
+                      <% end %>
                     <% end %>
                   </div>
 
-                  <!-- Teams -->
-                  <div class="flex items-center justify-center gap-2">
-                    <!-- Away Team (Left) -->
-                    <div class="flex items-center justify-end gap-2 flex-1">
-                      <label for="away_<%= game[:competition_id] %>" class="cursor-pointer text-sm font-medium text-gray-900 text-right hover:text-blue-600 transition-colors">
-                        <% if game_started && game[:away_team][:score] %>
-                          <span class="mr-1 font-semibold"><%= game[:away_team][:score] %></span>
-                        <% end %>
-                        <%= game[:away_team][:abbreviation] %>
-                      </label>
+                  <!-- Scoreboard Row with Radio Buttons -->
+                  <div class="flex items-center gap-3">
+                    <!-- Away Team -->
+                    <label for="away_<%= game[:competition_id] %>" class="flex-1 flex items-center gap-1.5 justify-end cursor-pointer hover:bg-gray-50 -mx-1 px-1 py-1 rounded transition-colors">
+                      <%= radio_button_tag "submission[picks][#{game[:competition_id]}]",
+                                           game[:away_team][:id],
+                                           existing_pick_team_id == game[:away_team][:id],
+                                           disabled: pick_disabled,
+                                           id: "away_#{game[:competition_id]}",
+                                           class: "w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0",
+                                           required: true %>
                       <img src="<%= game[:away_team][:logo] %>"
                            alt="<%= game[:away_team][:name] %>"
-                           class="w-6 h-6 object-contain flex-shrink-0">
-                      <div class="relative flex items-center">
-                        <%= radio_button_tag "submission[picks][#{game[:competition_id]}]",
-                                             game[:away_team][:id],
-                                             existing_pick_team_id == game[:away_team][:id],
-                                             disabled: pick_disabled,
-                                             id: "away_#{game[:competition_id]}",
-                                             class: "w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed",
-                                             required: true %>
-                      </div>
-                    </div>
+                           class="w-5 h-5 flex-shrink-0">
+                      <span class="text-sm font-medium text-gray-900"><%= game[:away_team][:abbreviation] %></span>
+                      <% if game_started && game[:away_team][:score] %>
+                        <span class="text-base font-bold text-gray-900"><%= game[:away_team][:score] %></span>
+                      <% end %>
+                    </label>
 
                     <!-- Divider -->
-                    <div class="px-1.5 text-gray-400 font-medium text-xs flex-shrink-0">@</div>
+                    <div class="flex-shrink-0">
+                      <span class="text-gray-400 text-xs font-medium">@</span>
+                    </div>
 
-                    <!-- Home Team (Right) -->
-                    <div class="flex items-center justify-start gap-2 flex-1">
-                      <div class="relative flex items-center">
-                        <%= radio_button_tag "submission[picks][#{game[:competition_id]}]",
-                                             game[:home_team][:id],
-                                             existing_pick_team_id == game[:home_team][:id],
-                                             disabled: pick_disabled,
-                                             id: "home_#{game[:competition_id]}",
-                                             class: "w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed",
-                                             required: true %>
-                      </div>
+                    <!-- Home Team -->
+                    <label for="home_<%= game[:competition_id] %>" class="flex-1 flex items-center gap-1.5 justify-start cursor-pointer hover:bg-gray-50 -mx-1 px-1 py-1 rounded transition-colors">
+                      <% if game_started && game[:home_team][:score] %>
+                        <span class="text-base font-bold text-gray-900"><%= game[:home_team][:score] %></span>
+                      <% end %>
+                      <span class="text-sm font-medium text-gray-900"><%= game[:home_team][:abbreviation] %></span>
                       <img src="<%= game[:home_team][:logo] %>"
                            alt="<%= game[:home_team][:name] %>"
-                           class="w-6 h-6 object-contain flex-shrink-0">
-                      <label for="home_<%= game[:competition_id] %>" class="cursor-pointer text-sm font-medium text-gray-900 hover:text-blue-600 transition-colors">
-                        <%= game[:home_team][:abbreviation] %>
-                        <% if game_started && game[:home_team][:score] %>
-                          <span class="ml-1 font-semibold"><%= game[:home_team][:score] %></span>
-                        <% end %>
-                      </label>
-                    </div>
+                           class="w-5 h-5 flex-shrink-0">
+                      <%= radio_button_tag "submission[picks][#{game[:competition_id]}]",
+                                           game[:home_team][:id],
+                                           existing_pick_team_id == game[:home_team][:id],
+                                           disabled: pick_disabled,
+                                           id: "home_#{game[:competition_id]}",
+                                           class: "w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0",
+                                           required: true %>
+                    </label>
                   </div>
                 </div>
               <% end %>

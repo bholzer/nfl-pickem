@@ -34,65 +34,71 @@
           <% selected_team = [game[:away_team], game[:home_team]].find { |t| t[:id] == pick[:selected_team_id] } %>
 
           <div class="px-3 sm:px-4 py-3 <%= is_correct ? 'bg-green-50' : (is_completed ? 'bg-red-50' : '') %>">
-            <!-- Game Status Header -->
+            <!-- Time and Status Row -->
             <div class="flex items-center justify-between mb-2">
               <div class="text-xs text-gray-500">
-                <%= game[:date].strftime("%a, %b %d at %l:%M %p") %>
+                <%= game[:date].strftime("%a %l:%M %p") %>
               </div>
-              <div class="flex items-center gap-2">
-                <!-- Game Status Badge -->
+              <div class="flex items-center gap-1.5">
+                <!-- Game Status -->
                 <% if game[:status] == "STATUS_FINAL" %>
                   <span class="px-1.5 py-0.5 bg-gray-600 text-white text-xs font-medium rounded">Final</span>
                 <% elsif game[:status] == "STATUS_IN_PROGRESS" %>
                   <span class="px-1.5 py-0.5 bg-blue-600 text-white text-xs font-medium rounded">
                     <%= game[:status_detail] %>
                   </span>
-                <% else %>
-                  <span class="px-1.5 py-0.5 bg-gray-200 text-gray-600 text-xs font-medium rounded">Upcoming</span>
                 <% end %>
 
                 <!-- Result Badge -->
                 <% if is_completed %>
                   <% if is_correct %>
-                    <span class="px-2 py-1 bg-green-600 text-white text-xs font-semibold rounded">✓</span>
+                    <span class="px-1.5 py-0.5 bg-green-600 text-white text-xs font-semibold rounded">✓</span>
                   <% else %>
-                    <span class="px-2 py-1 bg-red-600 text-white text-xs font-semibold rounded">✗</span>
+                    <span class="px-1.5 py-0.5 bg-red-600 text-white text-xs font-semibold rounded">✗</span>
                   <% end %>
                 <% end %>
               </div>
             </div>
 
-            <!-- Game Info -->
-            <div class="flex items-start justify-between gap-3">
-              <div class="flex-1 min-w-0">
-                <!-- Away Team -->
-                <div class="flex items-center gap-2 mb-1">
-                  <img src="<%= game[:away_team][:logo] %>" alt="<%= game[:away_team][:abbreviation] %>" class="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0">
-                  <span class="text-sm font-medium text-gray-900"><%= game[:away_team][:abbreviation] %></span>
-                  <% if game[:away_team][:score] %>
-                    <span class="font-semibold text-gray-900"><%= game[:away_team][:score] %></span>
-                  <% end %>
-                  <% if pick[:winning_team_id] == game[:away_team][:id] %>
-                    <span class="text-green-600 font-bold text-sm">✓</span>
-                  <% end %>
-                  <% if selected_team && selected_team[:id] == game[:away_team][:id] %>
-                    <span class="px-1.5 py-0.5 bg-blue-100 text-blue-800 text-xs font-semibold rounded">Pick</span>
-                  <% end %>
-                </div>
-                <!-- Home Team -->
-                <div class="flex items-center gap-2">
-                  <img src="<%= game[:home_team][:logo] %>" alt="<%= game[:home_team][:abbreviation] %>" class="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0">
-                  <span class="text-sm font-medium text-gray-900"><%= game[:home_team][:abbreviation] %></span>
-                  <% if game[:home_team][:score] %>
-                    <span class="font-semibold text-gray-900"><%= game[:home_team][:score] %></span>
-                  <% end %>
-                  <% if pick[:winning_team_id] == game[:home_team][:id] %>
-                    <span class="text-green-600 font-bold text-sm">✓</span>
-                  <% end %>
-                  <% if selected_team && selected_team[:id] == game[:home_team][:id] %>
-                    <span class="px-1.5 py-0.5 bg-blue-100 text-blue-800 text-xs font-semibold rounded">Pick</span>
-                  <% end %>
-                </div>
+            <!-- Scoreboard Row -->
+            <div class="flex items-center gap-3">
+              <!-- Away Team -->
+              <div class="flex-1 flex items-center gap-1.5 justify-end">
+                <!-- Pick indicator -->
+                <% if pick[:selected_team_id] == game[:away_team][:id] %>
+                  <span class="px-1.5 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded">PICK</span>
+                <% end %>
+                <!-- Win indicator -->
+                <% if pick[:winning_team_id] == game[:away_team][:id] %>
+                  <span class="text-green-600 text-sm flex-shrink-0">✓</span>
+                <% end %>
+                <img src="<%= game[:away_team][:logo] %>" alt="<%= game[:away_team][:abbreviation] %>" class="w-5 h-5 flex-shrink-0">
+                <span class="text-sm font-medium text-gray-900"><%= game[:away_team][:abbreviation] %></span>
+                <% if game[:away_team][:score] %>
+                  <span class="text-base font-bold text-gray-900"><%= game[:away_team][:score] %></span>
+                <% end %>
+              </div>
+
+              <!-- Divider -->
+              <div class="flex-shrink-0">
+                <span class="text-gray-400 text-xs font-medium">@</span>
+              </div>
+
+              <!-- Home Team -->
+              <div class="flex-1 flex items-center gap-1.5 justify-start">
+                <% if game[:home_team][:score] %>
+                  <span class="text-base font-bold text-gray-900"><%= game[:home_team][:score] %></span>
+                <% end %>
+                <span class="text-sm font-medium text-gray-900"><%= game[:home_team][:abbreviation] %></span>
+                <img src="<%= game[:home_team][:logo] %>" alt="<%= game[:home_team][:abbreviation] %>" class="w-5 h-5 flex-shrink-0">
+                <!-- Win indicator -->
+                <% if pick[:winning_team_id] == game[:home_team][:id] %>
+                  <span class="text-green-600 text-sm flex-shrink-0">✓</span>
+                <% end %>
+                <!-- Pick indicator -->
+                <% if pick[:selected_team_id] == game[:home_team][:id] %>
+                  <span class="px-1.5 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded">PICK</span>
+                <% end %>
               </div>
             </div>
           </div>
