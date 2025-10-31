@@ -70,14 +70,14 @@
                 <% end %>
                 <% if pick[:selected_team_id] == game[:away_team][:id] %>
                   <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded flex items-center gap-1.5">
-                    <img src="<%= game[:away_team][:logo] %>" alt="<%= game[:away_team][:abbreviation] %>" class="w-4 h-4 flex-shrink-0">
+                    <img src="<%= game[:away_team][:logo] %>" alt="<%= game[:away_team][:abbreviation] %>" class="w-8 h-8 flex-shrink-0">
                     <span class="text-sm font-semibold"><%= game[:away_team][:abbreviation] %></span>
                     <% if game[:away_team][:score] %>
                       <span class="text-base font-bold"><%= game[:away_team][:score] %></span>
                     <% end %>
                   </span>
                 <% else %>
-                  <img src="<%= game[:away_team][:logo] %>" alt="<%= game[:away_team][:abbreviation] %>" class="w-5 h-5 flex-shrink-0">
+                  <img src="<%= game[:away_team][:logo] %>" alt="<%= game[:away_team][:abbreviation] %>" class="w-8 h-8 flex-shrink-0">
                   <span class="text-sm font-medium text-gray-900"><%= game[:away_team][:abbreviation] %></span>
                   <% if game[:away_team][:score] %>
                     <span class="text-base font-bold text-gray-900"><%= game[:away_team][:score] %></span>
@@ -98,14 +98,14 @@
                       <span class="text-base font-bold"><%= game[:home_team][:score] %></span>
                     <% end %>
                     <span class="text-sm font-semibold"><%= game[:home_team][:abbreviation] %></span>
-                    <img src="<%= game[:home_team][:logo] %>" alt="<%= game[:home_team][:abbreviation] %>" class="w-4 h-4 flex-shrink-0">
+                    <img src="<%= game[:home_team][:logo] %>" alt="<%= game[:home_team][:abbreviation] %>" class="w-8 h-8 flex-shrink-0">
                   </span>
                 <% else %>
                   <% if game[:home_team][:score] %>
                     <span class="text-base font-bold text-gray-900"><%= game[:home_team][:score] %></span>
                   <% end %>
                   <span class="text-sm font-medium text-gray-900"><%= game[:home_team][:abbreviation] %></span>
-                  <img src="<%= game[:home_team][:logo] %>" alt="<%= game[:home_team][:abbreviation] %>" class="w-5 h-5 flex-shrink-0">
+                  <img src="<%= game[:home_team][:logo] %>" alt="<%= game[:home_team][:abbreviation] %>" class="w-8 h-8 flex-shrink-0">
                 <% end %>
                 <!-- Win indicator -->
                 <% if pick[:winning_team_id] == game[:home_team][:id] %>
