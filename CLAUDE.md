@@ -215,3 +215,6 @@ Templates in `app/views/discord_messages/`:
 - Use cron syntax for complex schedules (e.g., `'*/15 21-23 * * 4'` for every 15 min, 9pm-11pm on Thursdays)
 - Jobs should be idempotent - safe to run multiple times
 - Check game state before sending messages to avoid spam
+
+## UI Design
+The UI design is described/defined by @DESIGN_SYSTEM.md
