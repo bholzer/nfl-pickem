@@ -34,8 +34,36 @@
           <% selected_team = [game[:away_team], game[:home_team]].find { |t| t[:id] == pick[:selected_team_id] } %>
 
           <div class="px-3 sm:px-4 py-3 <%= is_correct ? 'bg-green-50' : (is_completed ? 'bg-red-50' : '') %>">
+            <!-- Game Status Header -->
+            <div class="flex items-center justify-between mb-2">
+              <div class="text-xs text-gray-500">
+                <%= game[:date].strftime("%a, %b %d at %l:%M %p") %>
+              </div>
+              <div class="flex items-center gap-2">
+                <!-- Game Status Badge -->
+                <% if game[:status] == "STATUS_FINAL" %>
+                  <span class="px-1.5 py-0.5 bg-gray-600 text-white text-xs font-medium rounded">Final</span>
+                <% elsif game[:status] == "STATUS_IN_PROGRESS" %>
+                  <span class="px-1.5 py-0.5 bg-blue-600 text-white text-xs font-medium rounded">
+                    <%= game[:status_detail] %>
+                  </span>
+                <% else %>
+                  <span class="px-1.5 py-0.5 bg-gray-200 text-gray-600 text-xs font-medium rounded">Upcoming</span>
+                <% end %>
+
+                <!-- Result Badge -->
+                <% if is_completed %>
+                  <% if is_correct %>
+                    <span class="px-2 py-1 bg-green-600 text-white text-xs font-semibold rounded">✓</span>
+                  <% else %>
+                    <span class="px-2 py-1 bg-red-600 text-white text-xs font-semibold rounded">✗</span>
+                  <% end %>
+                <% end %>
+              </div>
+            </div>
+
             <!-- Game Info -->
-            <div class="flex items-start justify-between gap-3 mb-2">
+            <div class="flex items-start justify-between gap-3">
               <div class="flex-1 min-w-0">
                 <!-- Away Team -->
                 <div class="flex items-center gap-2 mb-1">
@@ -66,24 +94,6 @@
                   <% end %>
                 </div>
               </div>
-
-              <!-- Result Badge -->
-              <div class="flex-shrink-0">
-                <% if is_completed %>
-                  <% if is_correct %>
-                    <span class="px-2 py-1 bg-green-600 text-white text-xs font-semibold rounded">✓</span>
-                  <% else %>
-                    <span class="px-2 py-1 bg-red-600 text-white text-xs font-semibold rounded">✗</span>
-                  <% end %>
-                <% else %>
-                  <span class="px-2 py-1 bg-gray-200 text-gray-600 text-xs font-medium rounded">—</span>
-                <% end %>
-              </div>
-            </div>
-
-            <!-- Game Time -->
-            <div class="text-xs text-gray-500">
-              <%= game[:date].strftime("%a, %b %d at %l:%M %p") %>
             </div>
           </div>
         <% end %>
