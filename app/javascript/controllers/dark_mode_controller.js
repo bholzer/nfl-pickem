@@ -3,8 +3,6 @@ import { Controller } from "@hotwired/stimulus"
 // Connects to data-controller="dark-mode"
 export default class extends Controller {
   connect() {
-    console.log('Dark mode controller connected')
-
     // Check localStorage for saved theme preference
     const savedTheme = localStorage.getItem('theme')
 
@@ -26,10 +24,8 @@ export default class extends Controller {
   }
 
   toggle() {
-    console.log('Toggle called')
     const currentTheme = document.documentElement.classList.contains('dark') ? 'dark' : 'light'
     const newTheme = currentTheme === 'dark' ? 'light' : 'dark'
-    console.log(`Switching from ${currentTheme} to ${newTheme}`)
     this.setTheme(newTheme, true)
   }
 
