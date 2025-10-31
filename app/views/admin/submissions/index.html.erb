@@ -1,35 +1,35 @@
-<div class="min-h-screen bg-gray-50">
+<div class="min-h-screen bg-gray-50 dark:bg-gray-950">
   <div class="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
     <!-- Header -->
     <div class="mb-4 sm:mb-6">
       <div class="flex items-center gap-2 sm:gap-3 mb-1">
-        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">All Submissions</h1>
-        <span class="px-2 py-1 bg-gray-200 text-gray-700 text-sm font-semibold rounded">Week <%= @week %></span>
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">All Submissions</h1>
+        <span class="px-2 py-1 bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-semibold rounded">Week <%= @week %></span>
       </div>
-      <p class="text-sm text-gray-600">Admin</p>
+      <p class="text-sm text-gray-600 dark:text-gray-400">Admin</p>
     </div>
 
     <%= render "shared/week_selector", current_week: @week %>
 
     <% if @submissions.any? %>
       <!-- Submissions List -->
-      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-4 sm:mb-6">
-        <div class="divide-y divide-gray-100">
+      <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden mb-4 sm:mb-6">
+        <div class="divide-y divide-gray-100 dark:divide-gray-800">
           <% @submissions.each do |submission| %>
             <% breakdown = @scoring.breakdown(submission) %>
-            <div class="flex items-center justify-between px-3 sm:px-4 py-3 hover:bg-gray-50 transition-colors duration-150">
+            <div class="flex items-center justify-between px-3 sm:px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-150">
               <div class="flex-1 min-w-0">
-                <p class="text-sm sm:text-base font-semibold text-gray-900 truncate"><%= submission.user.discord_username %></p>
-                <p class="text-xs sm:text-sm text-gray-500 mt-0.5">
+                <p class="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100 truncate"><%= submission.user.discord_username %></p>
+                <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
                   TB: <%= submission.tiebreaker %> • <%= submission.created_at.strftime("%b %d at %I:%M %p") %>
                 </p>
               </div>
               <div class="flex items-center gap-3 sm:gap-4 flex-shrink-0 ml-2">
                 <div class="text-right">
-                  <p class="text-lg sm:text-xl font-bold text-green-600"><%= breakdown[:correct_picks] %></p>
-                  <p class="text-xs text-gray-500">picks</p>
+                  <p class="text-lg sm:text-xl font-bold text-green-600 dark:text-green-400"><%= breakdown[:correct_picks] %></p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">picks</p>
                 </div>
-                <%= link_to "View", admin_submission_path(submission), class: "px-3 py-1.5 bg-blue-600 text-white text-xs sm:text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors" %>
+                <%= link_to "View", admin_submission_path(submission), class: "px-3 py-1.5 bg-blue-600 dark:bg-blue-700 text-white text-xs sm:text-sm font-medium rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors" %>
               </div>
             </div>
           <% end %>
@@ -37,15 +37,15 @@
       </div>
     <% else %>
       <!-- Empty State -->
-      <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 sm:p-4 text-center mb-4 sm:mb-6">
-        <p class="text-sm text-amber-800">No submissions found for Week <%= @week %></p>
+      <div class="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-3 sm:p-4 text-center mb-4 sm:mb-6">
+        <p class="text-sm text-amber-800 dark:text-amber-300">No submissions found for Week <%= @week %></p>
       </div>
     <% end %>
 
     <!-- Quick Links -->
     <div class="space-y-2 sm:space-y-3">
-      <%= link_to "Admin Dashboard", admin_jobs_path, class: "block w-full px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors text-center" %>
-      <%= link_to "Public Standings", root_path, class: "block w-full px-4 py-2.5 bg-white text-gray-700 text-sm font-medium border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors text-center" %>
+      <%= link_to "Admin Dashboard", admin_jobs_path, class: "block w-full px-4 py-2.5 bg-blue-600 dark:bg-blue-700 text-white text-sm font-medium rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors text-center" %>
+      <%= link_to "Public Standings", root_path, class: "block w-full px-4 py-2.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-medium border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors text-center" %>
     </div>
   </div>
 </div>

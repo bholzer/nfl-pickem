@@ -1,28 +1,28 @@
-<div class="min-h-screen bg-gray-50">
+<div class="min-h-screen bg-gray-50 dark:bg-gray-950">
   <div class="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
     <!-- Header -->
     <div class="mb-4 sm:mb-6">
       <div class="flex items-center gap-2 sm:gap-3 mb-1">
-        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">Make Your Picks</h1>
-        <span class="px-2 py-1 bg-gray-200 text-gray-700 text-sm font-semibold rounded">Week <%= @week %></span>
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">Make Your Picks</h1>
+        <span class="px-2 py-1 bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-semibold rounded">Week <%= @week %></span>
       </div>
-      <p class="text-sm text-gray-600"><%= @current_user.discord_username %></p>
+      <p class="text-sm text-gray-600 dark:text-gray-400"><%= @current_user.discord_username %></p>
     </div>
 
     <!-- Alerts -->
     <% if @games_locked %>
       <% if @submission.persisted? %>
-        <div class="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 sm:mb-6">
-          <p class="text-sm text-red-800"><strong>Locked!</strong> You cannot edit your picks after games have started.</p>
+        <div class="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg p-3 mb-4 sm:mb-6">
+          <p class="text-sm text-red-800 dark:text-red-300"><strong>Locked!</strong> You cannot edit your picks after games have started.</p>
         </div>
       <% else %>
-        <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 sm:mb-6">
-          <p class="text-sm text-amber-800"><strong>Late submission:</strong> Some games have started. You can only pick for games that haven't kicked off yet.</p>
+        <div class="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-3 mb-4 sm:mb-6">
+          <p class="text-sm text-amber-800 dark:text-amber-300"><strong>Late submission:</strong> Some games have started. You can only pick for games that haven't kicked off yet.</p>
         </div>
       <% end %>
     <% elsif @earliest_game_time %>
-      <div class="bg-sky-50 border border-sky-200 rounded-lg p-3 mb-4 sm:mb-6">
-        <p class="text-sm text-sky-800">Picks lock at: <strong><%= @earliest_game_time.strftime("%A, %b %d at %l:%M %p %Z") %></strong></p>
+      <div class="bg-sky-50 dark:bg-sky-950 border border-sky-200 dark:border-sky-800 rounded-lg p-3 mb-4 sm:mb-6">
+        <p class="text-sm text-sky-800 dark:text-sky-300">Picks lock at: <strong><%= @earliest_game_time.strftime("%A, %b %d at %l:%M %p %Z") %></strong></p>
       </div>
     <% end %>
 
@@ -35,33 +35,33 @@
         <% games_by_day.sort.each_with_index do |(date, games), index| %>
           <div class="mb-4 sm:mb-6">
             <!-- Day Header -->
-            <h2 class="text-lg font-semibold text-gray-900 mb-3">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
               <%= date.strftime("%A, %B %d") %>
             </h2>
 
             <!-- Games List -->
-            <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-              <div class="divide-y divide-gray-100">
+            <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
+              <div class="divide-y divide-gray-100 dark:divide-gray-800">
               <% games.each do |game| %>
                 <% existing_pick_team_id = @submission.picks[game[:competition_id]] if @submission.picks.present? %>
                 <% game_started = game[:status] != "STATUS_SCHEDULED" %>
                 <% pick_disabled = game_started || (@submission.persisted? && @games_locked) %>
 
-                <div class="px-3 sm:px-4 py-3 <%= game_started ? 'bg-gray-50' : '' %>">
+                <div class="px-3 sm:px-4 py-3 <%= game_started ? 'bg-gray-50 dark:bg-gray-800' : '' %>">
                   <!-- Time and Status Row -->
                   <div class="flex items-center justify-between mb-2">
-                    <div class="text-xs text-gray-500">
+                    <div class="text-xs text-gray-500 dark:text-gray-400">
                       <%= game[:date].strftime("%a %l:%M %p") %>
                     </div>
                     <% if game_started %>
                       <% if game[:status] == "STATUS_FINAL" %>
-                        <span class="px-1.5 py-0.5 bg-gray-600 text-white text-xs font-medium rounded">Final</span>
+                        <span class="px-1.5 py-0.5 bg-gray-600 dark:bg-gray-700 text-white text-xs font-medium rounded">Final</span>
                       <% elsif game[:status] == "STATUS_IN_PROGRESS" %>
-                        <span class="px-1.5 py-0.5 bg-blue-600 text-white text-xs font-medium rounded">
+                        <span class="px-1.5 py-0.5 bg-blue-600 dark:bg-blue-700 text-white text-xs font-medium rounded">
                           <%= game[:status_detail] %>
                         </span>
                       <% else %>
-                        <span class="px-1.5 py-0.5 bg-red-100 text-red-700 text-xs font-medium rounded">Started</span>
+                        <span class="px-1.5 py-0.5 bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 text-xs font-medium rounded">Started</span>
                       <% end %>
                     <% end %>
                   </div>
@@ -69,34 +69,34 @@
                   <!-- Scoreboard Row with Radio Buttons -->
                   <div class="flex items-center gap-3">
                     <!-- Away Team -->
-                    <label for="away_<%= game[:competition_id] %>" class="flex-1 flex items-center gap-1.5 justify-end cursor-pointer hover:bg-gray-50 -mx-1 px-1 py-1 rounded transition-colors">
+                    <label for="away_<%= game[:competition_id] %>" class="flex-1 flex items-center gap-1.5 justify-end cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 -mx-1 px-1 py-1 rounded transition-colors">
                       <%= radio_button_tag "submission[picks][#{game[:competition_id]}]",
                                            game[:away_team][:id],
                                            existing_pick_team_id == game[:away_team][:id],
                                            disabled: pick_disabled,
                                            id: "away_#{game[:competition_id]}",
-                                           class: "w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0",
+                                           class: "w-4 h-4 text-blue-600 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0",
                                            required: true %>
                       <img src="<%= game[:away_team][:logo] %>"
                            alt="<%= game[:away_team][:name] %>"
                            class="w-5 h-5 flex-shrink-0">
-                      <span class="text-sm font-medium text-gray-900"><%= game[:away_team][:abbreviation] %></span>
+                      <span class="text-sm font-medium text-gray-900 dark:text-gray-100"><%= game[:away_team][:abbreviation] %></span>
                       <% if game_started && game[:away_team][:score] %>
-                        <span class="text-base font-bold text-gray-900"><%= game[:away_team][:score] %></span>
+                        <span class="text-base font-bold text-gray-900 dark:text-gray-100"><%= game[:away_team][:score] %></span>
                       <% end %>
                     </label>
 
                     <!-- Divider -->
                     <div class="flex-shrink-0">
-                      <span class="text-gray-400 text-xs font-medium">@</span>
+                      <span class="text-gray-400 dark:text-gray-500 text-xs font-medium">@</span>
                     </div>
 
                     <!-- Home Team -->
-                    <label for="home_<%= game[:competition_id] %>" class="flex-1 flex items-center gap-1.5 justify-start cursor-pointer hover:bg-gray-50 -mx-1 px-1 py-1 rounded transition-colors">
+                    <label for="home_<%= game[:competition_id] %>" class="flex-1 flex items-center gap-1.5 justify-start cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 -mx-1 px-1 py-1 rounded transition-colors">
                       <% if game_started && game[:home_team][:score] %>
-                        <span class="text-base font-bold text-gray-900"><%= game[:home_team][:score] %></span>
+                        <span class="text-base font-bold text-gray-900 dark:text-gray-100"><%= game[:home_team][:score] %></span>
                       <% end %>
-                      <span class="text-sm font-medium text-gray-900"><%= game[:home_team][:abbreviation] %></span>
+                      <span class="text-sm font-medium text-gray-900 dark:text-gray-100"><%= game[:home_team][:abbreviation] %></span>
                       <img src="<%= game[:home_team][:logo] %>"
                            alt="<%= game[:home_team][:name] %>"
                            class="w-5 h-5 flex-shrink-0">
@@ -105,7 +105,7 @@
                                            existing_pick_team_id == game[:home_team][:id],
                                            disabled: pick_disabled,
                                            id: "home_#{game[:competition_id]}",
-                                           class: "w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0",
+                                           class: "w-4 h-4 text-blue-600 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0",
                                            required: true %>
                     </label>
                   </div>
@@ -117,11 +117,11 @@
         <% end %>
 
         <!-- Tiebreaker -->
-        <div class="bg-white border border-gray-200 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
-          <label class="block text-base font-semibold mb-2 text-gray-900">
+        <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
+          <label class="block text-base font-semibold mb-2 text-gray-900 dark:text-gray-100">
             Tiebreaker
           </label>
-          <p class="text-xs sm:text-sm text-gray-600 mb-3">
+          <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-3">
             Total combined points in Monday Night Football
           </p>
           <div class="flex items-center gap-2">
@@ -129,23 +129,23 @@
                                min: 0,
                                required: true,
                                disabled: @submission.persisted? && @games_locked,
-                               class: "w-20 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed",
+                               class: "w-20 px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed",
                                placeholder: "0" %>
-            <span class="text-sm text-gray-600">points</span>
+            <span class="text-sm text-gray-600 dark:text-gray-400">points</span>
           </div>
         </div>
 
         <!-- Submit Button -->
         <button type="submit"
                 <%= "disabled" if @submission.persisted? && @games_locked %>
-                class="w-full px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed">
+                class="w-full px-4 py-2.5 bg-blue-600 dark:bg-blue-700 text-white text-sm font-medium rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed">
           <%= @submission.persisted? ? "Update Picks" : "Submit Picks" %>
         </button>
       <% end %>
     <% else %>
       <!-- Empty State -->
-      <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 sm:p-4 text-center">
-        <p class="text-sm text-amber-800">No games available for Week <%= @week %></p>
+      <div class="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-3 sm:p-4 text-center">
+        <p class="text-sm text-amber-800 dark:text-amber-300">No games available for Week <%= @week %></p>
       </div>
     <% end %>
   </div>

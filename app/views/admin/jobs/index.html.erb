@@ -1,41 +1,41 @@
-<div class="min-h-screen bg-gray-50">
+<div class="min-h-screen bg-gray-50 dark:bg-gray-950">
   <div class="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
     <!-- Header -->
     <div class="mb-4 sm:mb-6">
-      <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-      <p class="text-sm text-gray-600 mt-1">Job Management & System Control</p>
+      <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">Admin Dashboard</h1>
+      <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Job Management & System Control</p>
     </div>
 
     <!-- Alerts -->
     <% if notice %>
-      <div class="bg-green-50 border border-green-200 rounded-lg p-3 mb-4 sm:mb-6">
-        <p class="text-sm text-green-800"><%= notice %></p>
+      <div class="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg p-3 mb-4 sm:mb-6">
+        <p class="text-sm text-green-800 dark:text-green-300"><%= notice %></p>
       </div>
     <% end %>
 
     <% if alert %>
-      <div class="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 sm:mb-6">
-        <p class="text-sm text-red-800"><%= alert %></p>
+      <div class="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg p-3 mb-4 sm:mb-6">
+        <p class="text-sm text-red-800 dark:text-red-300"><%= alert %></p>
       </div>
     <% end %>
 
     <!-- Quick Actions -->
     <div class="mb-4 sm:mb-6">
-      <h2 class="text-lg font-semibold text-gray-900 mb-3">Quick Actions</h2>
+      <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Quick Actions</h2>
       <div class="space-y-2 sm:space-y-3">
         <% @available_jobs.each do |job_type, config| %>
-          <div class="bg-white border border-gray-200 rounded-lg p-3 sm:p-4">
+          <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-3 sm:p-4">
             <div class="mb-2">
-              <h3 class="text-sm font-semibold text-gray-900"><%= config[:name] %></h3>
-              <p class="text-xs text-gray-600 mt-0.5"><%= config[:description] %></p>
+              <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100"><%= config[:name] %></h3>
+              <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5"><%= config[:description] %></p>
             </div>
 
             <%= form_with url: admin_jobs_path, method: :post, class: "flex items-center gap-2" do |f| %>
               <%= f.hidden_field :job_type, value: job_type %>
               <% if config[:requires_week] %>
-                <%= f.number_field :week, value: EspnScoreboard.current_week, min: 1, max: 18, class: "w-16 px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" %>
+                <%= f.number_field :week, value: EspnScoreboard.current_week, min: 1, max: 18, class: "w-16 px-2 py-1.5 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" %>
               <% end %>
-              <%= f.submit "Run Now", class: "flex-1 px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors cursor-pointer" %>
+              <%= f.submit "Run Now", class: "flex-1 px-3 py-1.5 bg-blue-600 dark:bg-blue-700 text-white text-sm font-medium rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors cursor-pointer" %>
             <% end %>
           </div>
         <% end %>
@@ -44,25 +44,25 @@
 
     <!-- Recent Jobs -->
     <div class="mb-4 sm:mb-6">
-      <h2 class="text-lg font-semibold text-gray-900 mb-3">Recent Jobs</h2>
+      <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Recent Jobs</h2>
       <% if @recent_jobs.any? %>
-        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-          <div class="divide-y divide-gray-100">
+        <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
+          <div class="divide-y divide-gray-100 dark:divide-gray-800">
             <% @recent_jobs.each do |job| %>
-              <div class="px-3 sm:px-4 py-3 hover:bg-gray-50 transition-colors duration-150">
+              <div class="px-3 sm:px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-150">
                 <div class="flex items-center justify-between gap-3 mb-1">
-                  <p class="text-xs sm:text-sm font-mono text-gray-900 truncate flex-1"><%= job.class_name %></p>
+                  <p class="text-xs sm:text-sm font-mono text-gray-900 dark:text-gray-100 truncate flex-1"><%= job.class_name %></p>
                   <div class="flex-shrink-0">
                     <% if job.finished_at %>
-                      <span class="px-1.5 py-0.5 bg-green-100 text-green-800 rounded text-xs font-semibold">Done</span>
+                      <span class="px-1.5 py-0.5 bg-green-100 dark:bg-green-950 text-green-800 dark:text-green-300 rounded text-xs font-semibold">Done</span>
                     <% elsif job.failed_at %>
-                      <span class="px-1.5 py-0.5 bg-red-100 text-red-800 rounded text-xs font-semibold">Failed</span>
+                      <span class="px-1.5 py-0.5 bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-300 rounded text-xs font-semibold">Failed</span>
                     <% else %>
-                      <span class="px-1.5 py-0.5 bg-amber-100 text-amber-800 rounded text-xs font-semibold">Pending</span>
+                      <span class="px-1.5 py-0.5 bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 rounded text-xs font-semibold">Pending</span>
                     <% end %>
                   </div>
                 </div>
-                <p class="text-xs text-gray-500">
+                <p class="text-xs text-gray-500 dark:text-gray-400">
                   <%= job.queue_name %> • <%= job.created_at.strftime("%b %d at %I:%M %p") %>
                 </p>
               </div>
@@ -70,17 +70,17 @@
           </div>
         </div>
       <% else %>
-        <div class="bg-gray-100 border border-gray-200 rounded-lg p-3 sm:p-4 text-center">
-          <p class="text-sm text-gray-600">No recent jobs found</p>
+        <div class="bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-800 rounded-lg p-3 sm:p-4 text-center">
+          <p class="text-sm text-gray-600 dark:text-gray-400">No recent jobs found</p>
         </div>
       <% end %>
     </div>
 
     <!-- Quick Links -->
     <div class="space-y-2 sm:space-y-3">
-      <%= link_to "View All Submissions", admin_submissions_path, class: "block w-full px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors text-center" %>
-      <%= link_to "Mission Control", mission_control_jobs_path, class: "block w-full px-4 py-2.5 bg-white text-gray-700 text-sm font-medium border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors text-center" %>
-      <%= link_to "← Back to Standings", root_path, class: "block w-full px-4 py-2.5 bg-white text-gray-700 text-sm font-medium border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors text-center" %>
+      <%= link_to "View All Submissions", admin_submissions_path, class: "block w-full px-4 py-2.5 bg-blue-600 dark:bg-blue-700 text-white text-sm font-medium rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors text-center" %>
+      <%= link_to "Mission Control", mission_control_jobs_path, class: "block w-full px-4 py-2.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-medium border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors text-center" %>
+      <%= link_to "← Back to Standings", root_path, class: "block w-full px-4 py-2.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-medium border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors text-center" %>
     </div>
   </div>
 </div>

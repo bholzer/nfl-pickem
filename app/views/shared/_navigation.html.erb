@@ -1,4 +1,4 @@
-<nav class="bg-gray-800 shadow-lg" data-controller="mobile-menu">
+<nav class="bg-gray-800 dark:bg-gray-950 shadow-lg" data-controller="mobile-menu">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="flex justify-between h-16">
       <!-- Logo/Brand -->
@@ -10,37 +10,44 @@
 
       <!-- Desktop Navigation (Right Side) -->
       <div class="hidden md:flex md:items-center md:space-x-4">
-        <%= link_to "Standings", standings_path, class: "text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium inline-flex items-center" %>
-        <%= link_to "My Picks", submissions_path, class: "text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium inline-flex items-center" %>
+        <%= link_to "Standings", standings_path, class: "text-gray-300 dark:text-gray-400 hover:bg-gray-700 dark:hover:bg-gray-900 hover:text-white dark:hover:text-gray-100 px-3 py-2 rounded-md text-sm font-medium inline-flex items-center" %>
+        <%= link_to "My Picks", submissions_path, class: "text-gray-300 dark:text-gray-400 hover:bg-gray-700 dark:hover:bg-gray-900 hover:text-white dark:hover:text-gray-100 px-3 py-2 rounded-md text-sm font-medium inline-flex items-center" %>
 
         <% if current_user&.admin? %>
           <!-- Admin Dropdown -->
           <div class="relative" data-controller="dropdown">
-            <button type="button" data-action="click->dropdown#toggle" class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium inline-flex items-center">
+            <button type="button" data-action="click->dropdown#toggle" class="text-gray-300 dark:text-gray-400 hover:bg-gray-700 dark:hover:bg-gray-900 hover:text-white dark:hover:text-gray-100 px-3 py-2 rounded-md text-sm font-medium inline-flex items-center">
               Admin
               <svg class="ml-1 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
                 <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
               </svg>
             </button>
-            <div data-dropdown-target="menu" class="hidden absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
+            <div data-dropdown-target="menu" class="hidden absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 z-50">
               <div class="py-1">
-                <%= link_to "View All Submissions", admin_submissions_path, class: "block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" %>
-                <%= link_to "Job Dashboard", admin_jobs_path, class: "block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" %>
-                <%= link_to "Mission Control", mission_control_jobs_path, class: "block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" %>
+                <%= link_to "View All Submissions", admin_submissions_path, class: "block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" %>
+                <%= link_to "Job Dashboard", admin_jobs_path, class: "block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" %>
+                <%= link_to "Mission Control", mission_control_jobs_path, class: "block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" %>
               </div>
             </div>
           </div>
         <% end %>
 
+        <!-- Dark Mode Toggle -->
+        <button type="button" data-action="click->dark-mode#toggle" class="text-gray-300 dark:text-gray-400 hover:bg-gray-700 dark:hover:bg-gray-900 hover:text-white dark:hover:text-gray-100 p-2 rounded-md">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+          </svg>
+        </button>
+
         <!-- User Info & Auth -->
-        <div class="flex items-center pl-4 border-l border-gray-700 space-x-3">
-          <span class="text-gray-300 text-sm">
+        <div class="flex items-center pl-4 border-l border-gray-700 dark:border-gray-800 space-x-3">
+          <span class="text-gray-300 dark:text-gray-400 text-sm">
             <%= current_user.discord_username %>
             <% if current_user.admin? %>
-              <span class="ml-2 px-2 py-1 bg-yellow-500 text-gray-900 text-xs font-bold rounded">ADMIN</span>
+              <span class="ml-2 px-2 py-1 bg-yellow-500 dark:bg-yellow-600 text-gray-900 dark:text-gray-100 text-xs font-bold rounded">ADMIN</span>
             <% end %>
           </span>
-          <%= button_to "Logout", logout_path, method: :delete, class: "text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium" %>
+          <%= button_to "Logout", logout_path, method: :delete, class: "text-gray-300 dark:text-gray-400 hover:bg-gray-700 dark:hover:bg-gray-900 hover:text-white dark:hover:text-gray-100 px-3 py-2 rounded-md text-sm font-medium" %>
         </div>
       </div>
 
@@ -64,32 +71,38 @@
   <!-- Mobile menu -->
   <div data-mobile-menu-target="menu" class="hidden md:hidden">
     <div class="px-2 pt-2 pb-3 space-y-1">
-      <%= link_to "Standings", standings_path, class: "text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium" %>
-      <%= link_to "My Picks", submissions_path, class: "text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium" %>
+      <%= link_to "Standings", standings_path, class: "text-gray-300 dark:text-gray-400 hover:bg-gray-700 dark:hover:bg-gray-900 hover:text-white dark:hover:text-gray-100 block px-3 py-2 rounded-md text-base font-medium" %>
+      <%= link_to "My Picks", submissions_path, class: "text-gray-300 dark:text-gray-400 hover:bg-gray-700 dark:hover:bg-gray-900 hover:text-white dark:hover:text-gray-100 block px-3 py-2 rounded-md text-base font-medium" %>
 
       <% if current_user&.admin? %>
-        <div class="border-t border-gray-700 pt-2 mt-2">
-          <div class="px-3 py-2 text-gray-400 text-xs font-semibold uppercase tracking-wider">Admin</div>
-          <%= link_to "View All Submissions", admin_submissions_path, class: "text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium" %>
-          <%= link_to "Job Dashboard", admin_jobs_path, class: "text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium" %>
-          <%= link_to "Mission Control", mission_control_jobs_path, class: "text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium" %>
+        <div class="border-t border-gray-700 dark:border-gray-800 pt-2 mt-2">
+          <div class="px-3 py-2 text-gray-400 dark:text-gray-500 text-xs font-semibold uppercase tracking-wider">Admin</div>
+          <%= link_to "View All Submissions", admin_submissions_path, class: "text-gray-300 dark:text-gray-400 hover:bg-gray-700 dark:hover:bg-gray-900 hover:text-white dark:hover:text-gray-100 block px-3 py-2 rounded-md text-base font-medium" %>
+          <%= link_to "Job Dashboard", admin_jobs_path, class: "text-gray-300 dark:text-gray-400 hover:bg-gray-700 dark:hover:bg-gray-900 hover:text-white dark:hover:text-gray-100 block px-3 py-2 rounded-md text-base font-medium" %>
+          <%= link_to "Mission Control", mission_control_jobs_path, class: "text-gray-300 dark:text-gray-400 hover:bg-gray-700 dark:hover:bg-gray-900 hover:text-white dark:hover:text-gray-100 block px-3 py-2 rounded-md text-base font-medium" %>
         </div>
       <% end %>
     </div>
 
     <!-- User info in mobile menu -->
-    <div class="pt-4 pb-3 border-t border-gray-700">
+    <div class="pt-4 pb-3 border-t border-gray-700 dark:border-gray-800">
       <div class="px-2 space-y-1">
         <div class="px-3 py-2">
-          <div class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Signed in as</div>
-          <div class="text-base font-medium text-white flex items-center mt-1">
+          <div class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Signed in as</div>
+          <div class="text-base font-medium text-white dark:text-gray-100 flex items-center mt-1">
             <%= current_user.discord_username %>
             <% if current_user.admin? %>
-              <span class="ml-2 px-2 py-1 bg-yellow-500 text-gray-900 text-xs font-bold rounded">ADMIN</span>
+              <span class="ml-2 px-2 py-1 bg-yellow-500 dark:bg-yellow-600 text-gray-900 dark:text-gray-100 text-xs font-bold rounded">ADMIN</span>
             <% end %>
           </div>
         </div>
-        <%= button_to "Logout", logout_path, method: :delete, class: "text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium w-full text-left" %>
+        <button type="button" data-action="click->dark-mode#toggle" class="text-gray-300 dark:text-gray-400 hover:bg-gray-700 dark:hover:bg-gray-900 hover:text-white dark:hover:text-gray-100 flex items-center gap-2 px-3 py-2 rounded-md text-base font-medium w-full">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+          </svg>
+          Toggle Dark Mode
+        </button>
+        <%= button_to "Logout", logout_path, method: :delete, class: "text-gray-300 dark:text-gray-400 hover:bg-gray-700 dark:hover:bg-gray-900 hover:text-white dark:hover:text-gray-100 block px-3 py-2 rounded-md text-base font-medium w-full text-left" %>
       </div>
     </div>
   </div>

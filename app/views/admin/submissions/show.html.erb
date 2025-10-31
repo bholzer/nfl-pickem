@@ -1,24 +1,24 @@
-<div class="min-h-screen bg-gray-50">
+<div class="min-h-screen bg-gray-50 dark:bg-gray-950">
   <div class="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
     <!-- Header -->
     <div class="mb-4 sm:mb-6">
       <div class="flex items-center gap-2 sm:gap-3 mb-1">
-        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">Player Picks</h1>
-        <span class="px-2 py-1 bg-gray-200 text-gray-700 text-sm font-semibold rounded">Week <%= @breakdown[:week] %></span>
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">Player Picks</h1>
+        <span class="px-2 py-1 bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-semibold rounded">Week <%= @breakdown[:week] %></span>
       </div>
-      <p class="text-sm text-gray-600">Admin • <%= @breakdown[:user] %></p>
+      <p class="text-sm text-gray-600 dark:text-gray-400">Admin • <%= @breakdown[:user] %></p>
     </div>
 
     <!-- Stats Summary -->
-    <div class="bg-white border border-gray-200 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
-      <div class="flex items-center justify-around divide-x divide-gray-200">
+    <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
+      <div class="flex items-center justify-around divide-x divide-gray-200 dark:divide-gray-800">
         <div class="flex-1 text-center">
-          <div class="text-2xl sm:text-3xl font-bold text-green-600"><%= @breakdown[:correct_picks] %></div>
-          <div class="text-xs sm:text-sm text-gray-600 mt-1">Correct</div>
+          <div class="text-2xl sm:text-3xl font-bold text-green-600 dark:text-green-400"><%= @breakdown[:correct_picks] %></div>
+          <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">Correct</div>
         </div>
         <div class="flex-1 text-center">
-          <div class="text-2xl sm:text-3xl font-bold text-gray-900"><%= @breakdown[:tiebreaker] %></div>
-          <div class="text-xs sm:text-sm text-gray-600 mt-1">Tiebreaker</div>
+          <div class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100"><%= @breakdown[:tiebreaker] %></div>
+          <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">Tiebreaker</div>
         </div>
       </div>
     </div>
@@ -27,7 +27,7 @@
 
     <!-- Actions -->
     <div>
-      <%= link_to "← Back to All Submissions", admin_submissions_path(week: @week), class: "block w-full px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors text-center" %>
+      <%= link_to "← Back to All Submissions", admin_submissions_path(week: @week), class: "block w-full px-4 py-2.5 bg-blue-600 dark:bg-blue-700 text-white text-sm font-medium rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors text-center" %>
     </div>
   </div>
 </div>

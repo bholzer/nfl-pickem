@@ -1,17 +1,17 @@
-<div class="min-h-screen bg-gray-50">
+<div class="min-h-screen bg-gray-50 dark:bg-gray-950">
   <div class="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
     <!-- Header -->
     <div class="mb-4 sm:mb-6">
       <div class="flex items-center gap-2 sm:gap-3">
-        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">Standings</h1>
-        <span class="px-2 py-1 bg-gray-200 text-gray-700 text-sm font-semibold rounded">Week <%= @week %></span>
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">Standings</h1>
+        <span class="px-2 py-1 bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-semibold rounded">Week <%= @week %></span>
       </div>
     </div>
 
     <% if @standings && @standings.any? %>
       <!-- Leaderboard -->
-      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <div class="divide-y divide-gray-100">
+      <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
+        <div class="divide-y divide-gray-100 dark:divide-gray-800">
           <%
             current_rank = 1
             @standings.each_with_index do |standing, index|
@@ -21,7 +21,7 @@
               end
               is_podium = current_rank <= 3
           %>
-            <div class="flex items-center justify-between px-3 sm:px-4 py-3 <%= is_podium ? 'bg-amber-50' : 'hover:bg-gray-50' %> transition-colors duration-150">
+            <div class="flex items-center justify-between px-3 sm:px-4 py-3 <%= is_podium ? 'bg-amber-50 dark:bg-amber-950' : 'hover:bg-gray-50 dark:hover:bg-gray-800' %> transition-colors duration-150">
               <!-- Rank & Player -->
               <div class="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
                 <div class="flex-shrink-0 w-8 sm:w-10 text-center">
@@ -30,11 +30,11 @@
                       <%= current_rank == 1 ? '🥇' : (current_rank == 2 ? '🥈' : '🥉') %>
                     </span>
                   <% else %>
-                    <span class="text-sm sm:text-base font-medium text-gray-500">#<%= current_rank %></span>
+                    <span class="text-sm sm:text-base font-medium text-gray-500 dark:text-gray-400">#<%= current_rank %></span>
                   <% end %>
                 </div>
                 <div class="min-w-0 flex-1">
-                  <p class="text-sm sm:text-base font-semibold text-gray-900 truncate">
+                  <p class="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100 truncate">
                     <%= standing[:user].discord_username %>
                   </p>
                 </div>
@@ -42,10 +42,10 @@
 
               <!-- Score -->
               <div class="flex-shrink-0 ml-2">
-                <span class="text-lg sm:text-xl font-bold text-green-600">
+                <span class="text-lg sm:text-xl font-bold text-green-600 dark:text-green-400">
                   <%= standing[:correct_picks] %>
                 </span>
-                <span class="text-xs sm:text-sm text-gray-500 ml-1">picks</span>
+                <span class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 ml-1">picks</span>
               </div>
             </div>
           <% end %>
@@ -53,8 +53,8 @@
       </div>
     <% else %>
       <!-- Empty State -->
-      <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 sm:p-4 text-center">
-        <p class="text-sm text-amber-800">No submissions yet for Week <%= @week %></p>
+      <div class="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-3 sm:p-4 text-center">
+        <p class="text-sm text-amber-800 dark:text-amber-300">No submissions yet for Week <%= @week %></p>
       </div>
     <% end %>
 

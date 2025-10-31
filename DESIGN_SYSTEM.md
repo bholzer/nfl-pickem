@@ -12,6 +12,115 @@ A minimal, flat, mobile-first design system optimized for displaying game picks,
 
 ---
 
+## Dark Mode
+
+### Philosophy
+Dark mode provides a comfortable viewing experience in low-light environments while maintaining the flat, information-dense design principles. Dark mode uses the `dark:` variant with class-based switching.
+
+### Implementation
+- Uses Tailwind's `class` strategy for dark mode
+- Defaults to system preference (`prefers-color-scheme: dark`)
+- User can manually toggle to override system preference
+- Preference stored in localStorage as `theme` ('light', 'dark', or 'auto')
+- Applied to root `<html>` element with `dark` class
+
+### Dark Mode Color Palette
+
+#### Backgrounds
+- **Page background**: `dark:bg-gray-950`
+- **Card/Container background**: `dark:bg-gray-900`
+- **Subtle background**: `dark:bg-gray-800`
+- **Hover background**: `dark:hover:bg-gray-800`
+
+#### Borders
+- **Subtle**: `dark:border-gray-800`
+- **Medium**: `dark:border-gray-700`
+- **Strong**: `dark:border-gray-600`
+
+#### Text
+- **Primary text**: `dark:text-gray-100`
+- **Secondary text**: `dark:text-gray-400`
+- **Muted text**: `dark:text-gray-500`
+- **Disabled text**: `dark:text-gray-600`
+
+#### Navigation (Dark Mode)
+- **Nav background**: `dark:bg-gray-950`
+- **Nav text**: `dark:text-gray-400`
+- **Nav text hover**: `dark:hover:text-gray-100` + `dark:hover:bg-gray-900`
+
+#### Semantic Colors (Dark Mode)
+All semantic colors maintain their hue but adjust for dark backgrounds:
+- **Success backgrounds**: `dark:bg-green-950` with `dark:border-green-800` and `dark:text-green-300`
+- **Error backgrounds**: `dark:bg-red-950` with `dark:border-red-800` and `dark:text-red-300`
+- **Warning backgrounds**: `dark:bg-amber-950` with `dark:border-amber-800` and `dark:text-amber-300`
+- **Info backgrounds**: `dark:bg-sky-950` with `dark:border-sky-800` and `dark:text-sky-300`
+
+### Dark Mode Component Patterns
+
+#### Card
+```html
+<div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-4">
+  Card content
+</div>
+```
+
+#### Alert/Message (Success)
+```html
+<div class="p-3 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
+  <p class="text-sm text-green-800 dark:text-green-300">Success message</p>
+</div>
+```
+
+#### Alert/Message (Error)
+```html
+<div class="p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg">
+  <p class="text-sm text-red-800 dark:text-red-300">Error message</p>
+</div>
+```
+
+#### Primary Button
+```html
+<button class="px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white hover:bg-blue-700 dark:hover:bg-blue-600 rounded-lg">
+  Action
+</button>
+```
+
+#### Secondary Button
+```html
+<button class="px-4 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">
+  Action
+</button>
+```
+
+#### Text Elements
+```html
+<!-- Primary heading -->
+<h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
+
+<!-- Body text -->
+<p class="text-sm text-gray-900 dark:text-gray-100">
+
+<!-- Secondary text -->
+<p class="text-sm text-gray-600 dark:text-gray-400">
+
+<!-- Muted text -->
+<p class="text-xs text-gray-500 dark:text-gray-500">
+```
+
+#### Form Input
+```html
+<input class="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500">
+```
+
+#### List/Table Row
+```html
+<div class="px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800">
+  Row content
+</div>
+```
+
+---
+
 ## Color Palette
 
 ### Primary Colors
