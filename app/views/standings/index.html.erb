@@ -57,5 +57,7 @@
         <p class="text-sm text-amber-800">No submissions yet for Week <%= @week %></p>
       </div>
     <% end %>
+
+    <%= render "shared/week_selector", current_week: @week %>
   </div>
 </div>
