@@ -1,49 +1,58 @@
-<div class="py-8">
-  <div class="max-w-6xl mx-auto px-4">
-    <div class="bg-white rounded-lg shadow-xl p-6 sm:p-8 mb-6">
-      <h1 class="text-3xl sm:text-4xl font-bold mb-2 text-gray-800 text-center">NFL Pick'em Standings</h1>
-      <p class="text-xl text-gray-600 text-center">Week <%= @week %></p>
+<div class="min-h-screen bg-gray-50">
+  <div class="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
+    <!-- Header -->
+    <div class="mb-4 sm:mb-6">
+      <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">Standings</h1>
+      <p class="text-sm text-gray-600 mt-1">Week <%= @week %></p>
     </div>
 
     <% if @standings && @standings.any? %>
-      <div class="bg-white shadow-xl rounded-lg overflow-hidden">
-        <table class="w-full">
-          <thead class="bg-gray-800 text-white">
-            <tr>
-              <th class="px-6 py-4 text-left">Rank</th>
-              <th class="px-6 py-4 text-left">Player</th>
-              <th class="px-6 py-4 text-center">Correct Picks</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-200">
-            <%
-              current_rank = 1
-              @standings.each_with_index do |standing, index|
-                # Handle ties: if this person has fewer correct picks than previous, update rank
-                if index > 0 && standing[:correct_picks] < @standings[index - 1][:correct_picks]
-                  current_rank = index + 1
-                end
-            %>
-              <tr class="<%= current_rank <= 3 ? 'bg-yellow-50' : 'hover:bg-gray-50' %>">
-                <td class="px-6 py-4 font-bold text-lg">
-                  #<%= current_rank %>
-                </td>
-                <td class="px-6 py-4 font-semibold">
-                  <%= standing[:user].discord_username %>
-                </td>
-                <td class="px-6 py-4 text-center text-lg font-bold text-green-600">
+      <!-- Leaderboard -->
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <div class="divide-y divide-gray-100">
+          <%
+            current_rank = 1
+            @standings.each_with_index do |standing, index|
+              # Handle ties: if this person has fewer correct picks than previous, update rank
+              if index > 0 && standing[:correct_picks] < @standings[index - 1][:correct_picks]
+                current_rank = index + 1
+              end
+              is_podium = current_rank <= 3
+          %>
+            <div class="flex items-center justify-between px-3 sm:px-4 py-3 <%= is_podium ? 'bg-amber-50' : 'hover:bg-gray-50' %> transition-colors duration-150">
+              <!-- Rank & Player -->
+              <div class="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+                <div class="flex-shrink-0 w-8 sm:w-10 text-center">
+                  <% if is_podium %>
+                    <span class="text-xl sm:text-2xl">
+                      <%= current_rank == 1 ? '🥇' : (current_rank == 2 ? '🥈' : '🥉') %>
+                    </span>
+                  <% else %>
+                    <span class="text-sm sm:text-base font-medium text-gray-500">#<%= current_rank %></span>
+                  <% end %>
+                </div>
+                <div class="min-w-0 flex-1">
+                  <p class="text-sm sm:text-base font-semibold text-gray-900 truncate">
+                    <%= standing[:user].discord_username %>
+                  </p>
+                </div>
+              </div>
+
+              <!-- Score -->
+              <div class="flex-shrink-0 ml-2">
+                <span class="text-lg sm:text-xl font-bold text-green-600">
                   <%= standing[:correct_picks] %>
-                </td>
-              </tr>
-            <% end %>
-          </tbody>
-        </table>
+                </span>
+                <span class="text-xs sm:text-sm text-gray-500 ml-1">picks</span>
+              </div>
+            </div>
+          <% end %>
+        </div>
       </div>
     <% else %>
-      <div class="bg-white rounded-lg shadow-xl p-6 sm:p-8">
-        <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded text-center">
-          No submissions yet for Week <%= @week %>.
-        </div>
+      <!-- Empty State -->
+      <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 sm:p-4 text-center">
+        <p class="text-sm text-amber-800">No submissions yet for Week <%= @week %></p>
       </div>
     <% end %>
   </div>

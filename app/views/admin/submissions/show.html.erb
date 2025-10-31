@@ -1,101 +1,95 @@
-<div class="py-8">
-  <div class="max-w-6xl mx-auto px-4">
-    <div class="bg-white rounded-lg shadow-xl p-6 sm:p-8 mb-6">
-      <h1 class="text-2xl sm:text-3xl font-bold mb-2 text-gray-800">Admin View: Week <%= @breakdown[:week] %> Picks</h1>
-      <p class="text-gray-600">
-        Player: <strong><%= @breakdown[:user] %></strong>
-      </p>
+<div class="min-h-screen bg-gray-50">
+  <div class="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
+    <!-- Header -->
+    <div class="mb-4 sm:mb-6">
+      <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">Player Picks</h1>
+      <p class="text-sm text-gray-600 mt-1">Admin • <%= @breakdown[:user] %> • Week <%= @breakdown[:week] %></p>
     </div>
 
-    <div class="bg-white rounded-lg shadow-xl p-6 sm:p-8 mb-6">
-      <div class="grid grid-cols-2 gap-4 text-center">
-        <div>
-          <div class="text-3xl font-bold text-green-600"><%= @breakdown[:correct_picks] %></div>
-          <div class="text-gray-600">Correct Picks</div>
+    <!-- Stats Summary -->
+    <div class="bg-white border border-gray-200 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
+      <div class="flex items-center justify-around divide-x divide-gray-200">
+        <div class="flex-1 text-center">
+          <div class="text-2xl sm:text-3xl font-bold text-green-600"><%= @breakdown[:correct_picks] %></div>
+          <div class="text-xs sm:text-sm text-gray-600 mt-1">Correct</div>
         </div>
-        <div>
-          <div class="text-3xl font-bold text-blue-600"><%= @breakdown[:tiebreaker] %></div>
-          <div class="text-gray-600">Tiebreaker</div>
+        <div class="flex-1 text-center">
+          <div class="text-2xl sm:text-3xl font-bold text-gray-900"><%= @breakdown[:tiebreaker] %></div>
+          <div class="text-xs sm:text-sm text-gray-600 mt-1">Tiebreaker</div>
         </div>
       </div>
     </div>
 
-    <div class="bg-white shadow-xl rounded-lg overflow-hidden mb-6">
-      <table class="w-full">
-        <thead class="bg-gray-800 text-white">
-          <tr>
-            <th class="px-4 py-3 text-left">Game</th>
-            <th class="px-4 py-3 text-center">Their Pick</th>
-            <th class="px-4 py-3 text-center">Result</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-200">
-          <% @breakdown[:picks].each do |pick| %>
-            <% game = pick[:game] %>
-            <% next unless game %>
-            <% is_correct = pick[:correct] %>
-            <% is_completed = pick[:winning_team_id].present? %>
+    <!-- Games List -->
+    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-4 sm:mb-6">
+      <div class="divide-y divide-gray-100">
+        <% @breakdown[:picks].each do |pick| %>
+          <% game = pick[:game] %>
+          <% next unless game %>
+          <% is_correct = pick[:correct] %>
+          <% is_completed = pick[:winning_team_id].present? %>
+          <% selected_team = [game[:away_team], game[:home_team]].find { |t| t[:id] == pick[:selected_team_id] } %>
 
-            <tr class="<%= is_correct ? 'bg-green-50' : (is_completed ? 'bg-red-50' : 'bg-gray-50') %>">
-              <td class="px-4 py-3">
-                <div class="flex items-center space-x-2 mb-1">
-                  <img src="<%= game[:away_team][:logo] %>" alt="<%= game[:away_team][:abbreviation] %>" class="w-6 h-6">
-                  <span><%= game[:away_team][:abbreviation] %></span>
+          <div class="px-3 sm:px-4 py-3 <%= is_correct ? 'bg-green-50' : (is_completed ? 'bg-red-50' : '') %>">
+            <!-- Game Info -->
+            <div class="flex items-start justify-between gap-3 mb-2">
+              <div class="flex-1 min-w-0">
+                <!-- Away Team -->
+                <div class="flex items-center gap-2 mb-1">
+                  <img src="<%= game[:away_team][:logo] %>" alt="<%= game[:away_team][:abbreviation] %>" class="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0">
+                  <span class="text-sm font-medium text-gray-900"><%= game[:away_team][:abbreviation] %></span>
                   <% if game[:away_team][:score] %>
-                    <span class="font-bold"><%= game[:away_team][:score] %></span>
+                    <span class="font-semibold text-gray-900"><%= game[:away_team][:score] %></span>
                   <% end %>
                   <% if pick[:winning_team_id] == game[:away_team][:id] %>
-                    <span class="text-green-600 font-bold">✓</span>
+                    <span class="text-green-600 font-bold text-sm">✓</span>
+                  <% end %>
+                  <% if selected_team && selected_team[:id] == game[:away_team][:id] %>
+                    <span class="px-1.5 py-0.5 bg-blue-100 text-blue-800 text-xs font-semibold rounded">Pick</span>
                   <% end %>
                 </div>
-                <div class="flex items-center space-x-2">
-                  <img src="<%= game[:home_team][:logo] %>" alt="<%= game[:home_team][:abbreviation] %>" class="w-6 h-6">
-                  <span><%= game[:home_team][:abbreviation] %></span>
+                <!-- Home Team -->
+                <div class="flex items-center gap-2">
+                  <img src="<%= game[:home_team][:logo] %>" alt="<%= game[:home_team][:abbreviation] %>" class="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0">
+                  <span class="text-sm font-medium text-gray-900"><%= game[:home_team][:abbreviation] %></span>
                   <% if game[:home_team][:score] %>
-                    <span class="font-bold"><%= game[:home_team][:score] %></span>
+                    <span class="font-semibold text-gray-900"><%= game[:home_team][:score] %></span>
                   <% end %>
                   <% if pick[:winning_team_id] == game[:home_team][:id] %>
-                    <span class="text-green-600 font-bold">✓</span>
+                    <span class="text-green-600 font-bold text-sm">✓</span>
+                  <% end %>
+                  <% if selected_team && selected_team[:id] == game[:home_team][:id] %>
+                    <span class="px-1.5 py-0.5 bg-blue-100 text-blue-800 text-xs font-semibold rounded">Pick</span>
                   <% end %>
                 </div>
-                <div class="text-xs text-gray-500 mt-1">
-                  <%= game[:date].strftime("%a, %b %d at %l:%M %p") %>
-                </div>
-              </td>
+              </div>
 
-              <td class="px-4 py-3 text-center font-semibold">
-                <% selected_team = [game[:away_team], game[:home_team]].find { |t| t[:id] == pick[:selected_team_id] } %>
-                <% if selected_team %>
-                  <div class="flex items-center justify-center space-x-2">
-                    <img src="<%= selected_team[:logo] %>" alt="<%= selected_team[:abbreviation] %>" class="w-6 h-6">
-                    <span><%= selected_team[:abbreviation] %></span>
-                  </div>
-                <% end %>
-              </td>
-
-              <td class="px-4 py-3 text-center">
+              <!-- Result Badge -->
+              <div class="flex-shrink-0">
                 <% if is_completed %>
                   <% if is_correct %>
-                    <span class="px-3 py-1 bg-green-500 text-white rounded-full text-sm font-semibold">
-                      ✓ Correct
-                    </span>
+                    <span class="px-2 py-1 bg-green-600 text-white text-xs font-semibold rounded">✓</span>
                   <% else %>
-                    <span class="px-3 py-1 bg-red-500 text-white rounded-full text-sm font-semibold">
-                      ✗ Wrong
-                    </span>
+                    <span class="px-2 py-1 bg-red-600 text-white text-xs font-semibold rounded">✗</span>
                   <% end %>
                 <% else %>
-                  <span class="text-gray-400 text-sm">In Progress</span>
+                  <span class="px-2 py-1 bg-gray-200 text-gray-600 text-xs font-medium rounded">—</span>
                 <% end %>
-              </td>
-            </tr>
-          <% end %>
-        </tbody>
-      </table>
+              </div>
+            </div>
+
+            <!-- Game Time -->
+            <div class="text-xs text-gray-500">
+              <%= game[:date].strftime("%a, %b %d at %l:%M %p") %>
+            </div>
+          </div>
+        <% end %>
+      </div>
     </div>
 
-    <div class="bg-white rounded-lg shadow-xl p-6 sm:p-8">
-      <%= link_to "← Back to All Submissions", admin_submissions_path(week: @week), class: "block w-full py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-bold text-lg rounded-lg hover:from-indigo-600 hover:to-purple-700 transition-all transform hover:scale-105 text-center" %>
+    <!-- Actions -->
+    <div>
+      <%= link_to "← Back to All Submissions", admin_submissions_path(week: @week), class: "block w-full px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors text-center" %>
     </div>
   </div>
 </div>

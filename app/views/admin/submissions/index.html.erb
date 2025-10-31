@@ -1,68 +1,57 @@
-<div class="py-8">
-  <div class="max-w-6xl mx-auto px-4">
-    <div class="bg-white rounded-lg shadow-xl p-6 sm:p-8 mb-6">
-      <h1 class="text-3xl sm:text-4xl font-bold mb-2 text-gray-800 text-center">Admin: All Submissions</h1>
-      <p class="text-xl text-gray-600 text-center">Week <%= @week %></p>
+<div class="min-h-screen bg-gray-50">
+  <div class="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
+    <!-- Header -->
+    <div class="mb-4 sm:mb-6">
+      <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">All Submissions</h1>
+      <p class="text-sm text-gray-600 mt-1">Admin • Week <%= @week %></p>
     </div>
 
-    <div class="bg-white rounded-lg shadow-xl p-6 mb-6">
-      <h2 class="text-lg font-semibold mb-4">Change Week</h2>
-      <div class="flex gap-2 flex-wrap">
+    <!-- Week Selector -->
+    <div class="bg-white border border-gray-200 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
+      <h2 class="text-sm font-semibold text-gray-900 mb-2">Select Week</h2>
+      <div class="flex gap-1.5 sm:gap-2 flex-wrap">
         <% (1..18).each do |w| %>
-          <%= link_to "Week #{w}", admin_submissions_path(week: w),
-              class: "px-4 py-2 rounded-lg #{w == @week.to_i ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}" %>
+          <%= link_to w, admin_submissions_path(week: w),
+              class: "px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded #{w == @week.to_i ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} transition-colors" %>
         <% end %>
       </div>
     </div>
 
     <% if @submissions.any? %>
-      <div class="bg-white shadow-xl rounded-lg overflow-hidden mb-6">
-        <table class="w-full">
-          <thead class="bg-gray-800 text-white">
-            <tr>
-              <th class="px-6 py-4 text-left">Player</th>
-              <th class="px-6 py-4 text-center">Correct Picks</th>
-              <th class="px-6 py-4 text-center">Tiebreaker</th>
-              <th class="px-6 py-4 text-center">Submitted At</th>
-              <th class="px-6 py-4 text-center">Actions</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-200">
-            <% @submissions.each do |submission| %>
-              <% breakdown = @scoring.breakdown(submission) %>
-              <tr class="hover:bg-gray-50">
-                <td class="px-6 py-4 font-bold">
-                  <%= submission.user.discord_username %>
-                </td>
-                <td class="px-6 py-4 text-center">
-                  <span class="text-2xl font-bold text-green-600"><%= breakdown[:correct_picks] %></span>
-                  <span class="text-gray-500">/ <%= breakdown[:total_games] %></span>
-                </td>
-                <td class="px-6 py-4 text-center text-gray-600">
-                  <%= submission.tiebreaker %>
-                </td>
-                <td class="px-6 py-4 text-center text-gray-500 text-sm">
-                  <%= submission.created_at.strftime("%b %d, %Y at %I:%M %p") %>
-                </td>
-                <td class="px-6 py-4 text-center">
-                  <%= link_to "View Details", admin_submission_path(submission), class: "px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors inline-block" %>
-                </td>
-              </tr>
-            <% end %>
-          </tbody>
-        </table>
+      <!-- Submissions List -->
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-4 sm:mb-6">
+        <div class="divide-y divide-gray-100">
+          <% @submissions.each do |submission| %>
+            <% breakdown = @scoring.breakdown(submission) %>
+            <div class="flex items-center justify-between px-3 sm:px-4 py-3 hover:bg-gray-50 transition-colors duration-150">
+              <div class="flex-1 min-w-0">
+                <p class="text-sm sm:text-base font-semibold text-gray-900 truncate"><%= submission.user.discord_username %></p>
+                <p class="text-xs sm:text-sm text-gray-500 mt-0.5">
+                  TB: <%= submission.tiebreaker %> • <%= submission.created_at.strftime("%b %d at %I:%M %p") %>
+                </p>
+              </div>
+              <div class="flex items-center gap-3 sm:gap-4 flex-shrink-0 ml-2">
+                <div class="text-right">
+                  <p class="text-lg sm:text-xl font-bold text-green-600"><%= breakdown[:correct_picks] %></p>
+                  <p class="text-xs text-gray-500">picks</p>
+                </div>
+                <%= link_to "View", admin_submission_path(submission), class: "px-3 py-1.5 bg-blue-600 text-white text-xs sm:text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors" %>
+              </div>
+            </div>
+          <% end %>
+        </div>
       </div>
     <% else %>
-      <div class="bg-white rounded-lg shadow-xl p-6 sm:p-8">
-        <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded text-center">
-          No submissions found for Week <%= @week %>.
-        </div>
+      <!-- Empty State -->
+      <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 sm:p-4 text-center mb-4 sm:mb-6">
+        <p class="text-sm text-amber-800">No submissions found for Week <%= @week %></p>
       </div>
     <% end %>
 
-    <div class="bg-white rounded-lg shadow-xl p-6 sm:p-8">
-      <%= link_to "Admin Dashboard", admin_jobs_path, class: "block w-full py-4 mb-4 bg-gradient-to-r from-purple-500 to-purple-600 text-white font-bold text-lg rounded-lg hover:from-purple-600 hover:to-purple-700 transition-all transform hover:scale-105 text-center" %>
-      <%= link_to "Public Standings", root_path, class: "block w-full py-4 bg-gradient-to-r from-indigo-500 to-blue-600 text-white font-bold text-lg rounded-lg hover:from-indigo-600 hover:to-blue-700 transition-all transform hover:scale-105 text-center" %>
+    <!-- Quick Links -->
+    <div class="space-y-2 sm:space-y-3">
+      <%= link_to "Admin Dashboard", admin_jobs_path, class: "block w-full px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors text-center" %>
+      <%= link_to "Public Standings", root_path, class: "block w-full px-4 py-2.5 bg-white text-gray-700 text-sm font-medium border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors text-center" %>
     </div>
   </div>
 </div>

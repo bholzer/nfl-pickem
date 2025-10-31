@@ -1,46 +1,32 @@
-<div class="py-8">
-  <div class="max-w-6xl mx-auto px-4">
-    <div class="bg-white rounded-lg shadow-xl p-6 sm:p-8 mb-6">
-      <h1 class="text-3xl sm:text-4xl font-bold mb-2 text-gray-800 text-center">My Submissions</h1>
-      <p class="text-xl text-gray-600 text-center"><%= @current_user.discord_username %></p>
+<div class="min-h-screen bg-gray-50">
+  <div class="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
+    <!-- Header -->
+    <div class="mb-4 sm:mb-6">
+      <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">My Submissions</h1>
+      <p class="text-sm text-gray-600 mt-1"><%= @current_user.discord_username %></p>
     </div>
 
     <% if @submissions.any? %>
-      <div class="bg-white shadow-xl rounded-lg overflow-hidden">
-        <table class="w-full">
-          <thead class="bg-gray-800 text-white">
-            <tr>
-              <th class="px-6 py-4 text-left">Week</th>
-              <th class="px-6 py-4 text-center">Tiebreaker</th>
-              <th class="px-6 py-4 text-center">Submitted At</th>
-              <th class="px-6 py-4 text-center">Actions</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-200">
-            <% @submissions.each do |submission| %>
-              <tr class="hover:bg-gray-50">
-                <td class="px-6 py-4 font-bold text-lg">
-                  Week <%= submission.week %>
-                </td>
-                <td class="px-6 py-4 text-center text-gray-600">
-                  <%= submission.tiebreaker %>
-                </td>
-                <td class="px-6 py-4 text-center text-gray-500 text-sm">
-                  <%= submission.created_at.strftime("%b %d, %Y at %I:%M %p") %>
-                </td>
-                <td class="px-6 py-4 text-center">
-                  <%= link_to "View", submission_path(submission, week: submission.week), class: "px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors inline-block" %>
-                </td>
-              </tr>
-            <% end %>
-          </tbody>
-        </table>
+      <!-- Submissions List -->
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <div class="divide-y divide-gray-100">
+          <% @submissions.each do |submission| %>
+            <div class="flex items-center justify-between px-3 sm:px-4 py-3 hover:bg-gray-50 transition-colors duration-150">
+              <div class="flex-1 min-w-0">
+                <p class="text-sm sm:text-base font-semibold text-gray-900">Week <%= submission.week %></p>
+                <p class="text-xs sm:text-sm text-gray-500 mt-0.5">
+                  <%= submission.created_at.strftime("%b %d, %Y at %I:%M %p") %> • TB: <%= submission.tiebreaker %>
+                </p>
+              </div>
+              <%= link_to "View", submission_path(submission, week: submission.week), class: "flex-shrink-0 ml-3 px-3 py-1.5 bg-blue-600 text-white text-xs sm:text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors" %>
+            </div>
+          <% end %>
+        </div>
       </div>
     <% else %>
-      <div class="bg-white rounded-lg shadow-xl p-6 sm:p-8">
-        <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded text-center">
-          You haven't submitted any picks yet.
-        </div>
+      <!-- Empty State -->
+      <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 sm:p-4 text-center">
+        <p class="text-sm text-amber-800">You haven't submitted any picks yet</p>
       </div>
     <% end %>
   </div>
