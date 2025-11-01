@@ -23,5 +23,7 @@ module NflPickem
     #
     # config.time_zone = "Central Time (US & Canada)"
     # config.eager_load_paths << Rails.root.join("extras")
+    config.mission_control.jobs.base_controller_class = "AdminController"
+    config.mission_control.jobs.http_basic_auth_enabled = false
   end
 end
