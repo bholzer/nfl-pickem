@@ -13,26 +13,44 @@
       <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
         <div class="divide-y divide-gray-100 dark:divide-gray-800">
           <% @standings.each do |standing| %>
-            <div class="flex items-center justify-between px-3 sm:px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-150">
-              <!-- Rank & Player -->
-              <div class="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
-                <div class="flex-shrink-0 w-8 sm:w-10 text-center">
-                  <span class="text-sm sm:text-base font-medium text-gray-500 dark:text-gray-400">#<%= standing[:rank] %></span>
+            <div class="px-3 sm:px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-150">
+              <div class="flex items-center justify-between">
+                <!-- Rank & Player -->
+                <div class="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+                  <div class="flex-shrink-0 w-8 sm:w-10 text-center">
+                    <span class="text-sm sm:text-base font-medium text-gray-500 dark:text-gray-400">#<%= standing[:rank] %></span>
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-2">
+                      <p class="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100 truncate">
+                        <%= standing[:user].discord_username %>
+                      </p>
+                      <% if standing[:winner] && @standings.size > 1 %>
+                        <span class="flex-shrink-0 px-2 py-1 bg-green-100 dark:bg-green-950 text-green-800 dark:text-green-300 text-xs font-semibold rounded border border-green-300 dark:border-green-800">
+                          WINNER
+                        </span>
+                      <% end %>
+                    </div>
+                  </div>
                 </div>
-                <div class="min-w-0 flex-1">
-                  <p class="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100 truncate">
-                    <%= standing[:user].discord_username %>
-                  </p>
+
+                <!-- Score -->
+                <div class="flex-shrink-0 ml-2">
+                  <span class="text-lg sm:text-xl font-bold text-green-600 dark:text-green-400">
+                    <%= standing[:correct_picks] %>
+                  </span>
+                  <span class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 ml-1">picks</span>
                 </div>
               </div>
 
-              <!-- Score -->
-              <div class="flex-shrink-0 ml-2">
-                <span class="text-lg sm:text-xl font-bold text-green-600 dark:text-green-400">
-                  <%= standing[:correct_picks] %>
-                </span>
-                <span class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 ml-1">picks</span>
-              </div>
+              <!-- Tiebreaker info for tied leaders when decided by tiebreaker -->
+              <% if @show_tiebreaker && standing[:correct_picks] == @winners.first[:correct_picks] %>
+                <div class="mt-2 ml-11 sm:ml-14 text-xs text-gray-600 dark:text-gray-400">
+                  Tiebreaker: <span class="font-semibold"><%= standing[:submission].tiebreaker %></span>
+                  (actual: <span class="font-semibold"><%= @scoreboard.monday_night_total %></span>,
+                  off by <span class="font-semibold"><%= standing[:tiebreaker_diff] %></span>)
+                </div>
+              <% end %>
             </div>
           <% end %>
         </div>
