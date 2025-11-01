@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html data-controller="dark-mode" class="bg-gradient-to-br from-indigo-500 to-purple-600 dark:from-indigo-950 dark:to-purple-950">
+<html data-controller="dark-mode" class="h-full bg-indigo-500 dark:bg-indigo-950">
   <head>
     <title><%= content_for(:title) || "NFL Pick-em" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -23,7 +23,7 @@
     <%= javascript_importmap_tags %>
   </head>
 
-  <body class="min-h-screen">
+  <body class="h-full bg-gradient-to-br from-indigo-500 to-purple-600 dark:from-indigo-950 dark:to-purple-950">
     <%= render "shared/navigation" if logged_in? %>
     <%= yield %>
   </body>
