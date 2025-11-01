@@ -46,12 +46,24 @@ class ScoringService
     end
 
     # Sort by correct picks (descending), then by tiebreaker proximity if all games complete
-    submission_scores.sort_by do |s|
+    sorted_scores = submission_scores.sort_by do |s|
       if @scoreboard.all_games_complete? && @scoreboard.monday_night_total
         [ -s[:correct_picks], (s[:submission].tiebreaker - @scoreboard.monday_night_total).abs ]
       else
         [ -s[:correct_picks], s[:submission].tiebreaker ]
       end
+    end
+
+    # Add ranks (handle ties by comparing correct_picks)
+    sorted_scores.each_with_index.reduce([]) do |result, (standing, index)|
+      rank = if index == 0
+        1
+      elsif standing[:correct_picks] < sorted_scores[index - 1][:correct_picks]
+        index + 1
+      else
+        result.last[:rank]
+      end
+      result << standing.merge(rank: rank)
     end
   end
 

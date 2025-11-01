@@ -12,26 +12,12 @@
       <!-- Leaderboard -->
       <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
         <div class="divide-y divide-gray-100 dark:divide-gray-800">
-          <%
-            current_rank = 1
-            @standings.each_with_index do |standing, index|
-              # Handle ties: if this person has fewer correct picks than previous, update rank
-              if index > 0 && standing[:correct_picks] < @standings[index - 1][:correct_picks]
-                current_rank = index + 1
-              end
-              is_podium = current_rank <= 3
-          %>
-            <div class="flex items-center justify-between px-3 sm:px-4 py-3 <%= is_podium ? 'bg-amber-50 dark:bg-amber-950' : 'hover:bg-gray-50 dark:hover:bg-gray-800' %> transition-colors duration-150">
+          <% @standings.each do |standing| %>
+            <div class="flex items-center justify-between px-3 sm:px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-150">
               <!-- Rank & Player -->
               <div class="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
                 <div class="flex-shrink-0 w-8 sm:w-10 text-center">
-                  <% if is_podium %>
-                    <span class="text-xl sm:text-2xl">
-                      <%= current_rank == 1 ? '🥇' : (current_rank == 2 ? '🥈' : '🥉') %>
-                    </span>
-                  <% else %>
-                    <span class="text-sm sm:text-base font-medium text-gray-500 dark:text-gray-400">#<%= current_rank %></span>
-                  <% end %>
+                  <span class="text-sm sm:text-base font-medium text-gray-500 dark:text-gray-400">#<%= standing[:rank] %></span>
                 </div>
                 <div class="min-w-0 flex-1">
                   <p class="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100 truncate">
