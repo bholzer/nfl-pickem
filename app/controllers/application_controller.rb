@@ -45,9 +45,14 @@ class ApplicationController < ActionController::Base
 
     # No authentication found, redirect to sign-in
     unless @current_user
+      store_intended_url
       redirect_to sign_in_path, alert: "Please sign in to continue."
       false
     end
+  end
+
+  def store_intended_url
+    session[:return_to] = request.fullpath if request.get?
   end
 
   def require_admin

@@ -15,7 +15,7 @@ class SessionsController < ApplicationController
     if user
       # User exists, log them in
       session[:user_id] = user.id
-      redirect_to standings_path, notice: "Successfully logged in as #{user.discord_username}!"
+      redirect_to session.delete(:return_to) || standings_path, notice: "Successfully logged in as #{user.discord_username}!"
     else
       # User doesn't exist in our system yet
       redirect_to sign_in_path, alert: "Discord account not found. Please contact the pool administrator to be added."
