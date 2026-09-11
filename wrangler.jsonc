@@ -1,0 +1,160 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "nfl-pickem-local",
+  "workers_dev": false,
+  "preview_urls": false,
+  "vars": {
+    "APP_ENV": "local",
+    "APP_ORIGIN": "http://127.0.0.1:5173",
+    "DISCORD_CLIENT_ID": "",
+    "DISCORD_CHANNEL_ID": "",
+    "DISCORD_ALLOWED_USER_IDS": "",
+    "DISCORD_ALLOWED_CHANNEL_IDS": "",
+    "DISCORD_SEND_ENABLED": "false",
+    "MAINTENANCE_MODE": "false",
+    "SCHEDULES_ENABLED": "false",
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "nfl-pickem-local",
+      "migrations_dir": "migrations",
+    },
+  ],
+  "workflows": [
+    {
+      "binding": "JOBS",
+      "name": "nfl-pickem-local-jobs",
+      "class_name": "PickemWorkflow",
+      "schedules": [
+        "0 13 * * TUE",
+        "0 14 * * THU",
+        "*/15 2-4 * * FRI",
+        "*/15 20-23 * * SUN",
+        "*/15 0-5 * * MON",
+        "*/15 2-4 * * TUE",
+      ],
+    },
+  ],
+  "main": "src/server/index.ts",
+  "compatibility_date": "2026-09-10",
+  "compatibility_flags": ["nodejs_compat"],
+  "send_metrics": false,
+  "assets": {
+    "binding": "ASSETS",
+    "directory": "./dist/client",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": true,
+  },
+  "env": {
+    "local": {
+      "name": "nfl-pickem-local",
+      "workers_dev": false,
+      "preview_urls": false,
+      "vars": {
+        "APP_ENV": "local",
+        "APP_ORIGIN": "http://127.0.0.1:5173",
+        "DISCORD_CLIENT_ID": "",
+        "DISCORD_CHANNEL_ID": "",
+        "DISCORD_ALLOWED_USER_IDS": "",
+        "DISCORD_ALLOWED_CHANNEL_IDS": "",
+        "DISCORD_SEND_ENABLED": "false",
+        "MAINTENANCE_MODE": "false",
+        "SCHEDULES_ENABLED": "false",
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "nfl-pickem-local",
+          "migrations_dir": "migrations",
+        },
+      ],
+      "workflows": [
+        {
+          "binding": "JOBS",
+          "name": "nfl-pickem-local-jobs",
+          "class_name": "PickemWorkflow",
+          "schedules": [
+            "0 13 * * TUE",
+            "0 14 * * THU",
+            "*/15 2-4 * * FRI",
+            "*/15 20-23 * * SUN",
+            "*/15 0-5 * * MON",
+            "*/15 2-4 * * TUE",
+          ],
+        },
+      ],
+    },
+    "staging": {
+      "name": "nfl-pickem-staging",
+      "account_id": "b1c51a7ba7a34094b8aa6c8b348e929f",
+      "workers_dev": false,
+      "preview_urls": false,
+      "routes": [
+        {
+          "pattern": "pickem-staging.bholzer.me",
+          "custom_domain": true,
+          "zone_id": "edfc5bace78326d69aedc239f8e3fa91",
+        },
+      ],
+      "vars": {
+        "APP_ENV": "staging",
+        "APP_ORIGIN": "https://pickem-staging.bholzer.me",
+        "DISCORD_CLIENT_ID": "1425995292695724032",
+        "DISCORD_CHANNEL_ID": "",
+        "DISCORD_ALLOWED_USER_IDS": "",
+        "DISCORD_ALLOWED_CHANNEL_IDS": "",
+        "DISCORD_SEND_ENABLED": "false",
+        "MAINTENANCE_MODE": "false",
+        "SCHEDULES_ENABLED": "false",
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "nfl-pickem-staging",
+          "migrations_dir": "migrations",
+          "database_id": "000d78cc-64fd-4907-8ed8-eb4ce624a7fb",
+        },
+      ],
+      "workflows": [
+        {
+          "binding": "JOBS",
+          "name": "nfl-pickem-staging-jobs",
+          "class_name": "PickemWorkflow",
+        },
+      ],
+    },
+    "production": {
+      "name": "nfl-pickem-production",
+      "account_id": "b1c51a7ba7a34094b8aa6c8b348e929f",
+      "workers_dev": false,
+      "preview_urls": false,
+      "routes": [],
+      "vars": {
+        "APP_ENV": "production",
+        "APP_ORIGIN": "https://pickem.bholzer.me",
+        "DISCORD_CLIENT_ID": "1425995292695724032",
+        "DISCORD_CHANNEL_ID": "",
+        "DISCORD_ALLOWED_USER_IDS": "",
+        "DISCORD_ALLOWED_CHANNEL_IDS": "",
+        "DISCORD_SEND_ENABLED": "false",
+        "MAINTENANCE_MODE": "false",
+        "SCHEDULES_ENABLED": "false",
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "nfl-pickem-production",
+          "migrations_dir": "migrations",
+        },
+      ],
+      "workflows": [
+        {
+          "binding": "JOBS",
+          "name": "nfl-pickem-production-jobs",
+          "class_name": "PickemWorkflow",
+        },
+      ],
+    },
+  },
+}

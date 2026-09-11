@@ -1,0 +1,8 @@
+# Copy to .dev.vars for local development only. Every value below is synthetic.
+# Never copy Rails credentials or production secrets into local test configuration.
+SESSION_SECRET="local-only-session-secret-not-for-deployment-0123456789"
+SUBMISSION_TOKEN_SECRET="local-only-submission-secret-not-for-deployment-0123456789"
+DISCORD_CLIENT_SECRET="local-only-discord-client-secret"
+DISCORD_BOT_TOKEN="local-only-discord-bot-token"
+DISCORD_SEND_ENABLED="false"
+SCHEDULES_ENABLED="false"

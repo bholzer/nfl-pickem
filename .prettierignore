@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.wrangler/
+tmp/
+coverage/
+.claude/
+.env*
+.dev.vars*
+**/.terraform/
+**/*.tfstate*
+package-lock.json
+tests/fixtures/espn-reference.json
+**/*.md

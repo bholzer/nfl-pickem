@@ -3,122 +3,100 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
-  scan_ruby:
+  node:
     runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          bundler-cache: true
-
-      - name: Scan for common Rails security vulnerabilities using static analysis
-        run: bin/brakeman --no-pager
-      
-      - name: Scan for known security vulnerabilities in gems used
-        run: bin/bundler-audit
-      
-  scan_js:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          bundler-cache: true
-
-      - name: Scan for security vulnerabilities in JavaScript dependencies
-        run: bin/importmap audit
-
-  lint:
-    runs-on: ubuntu-latest
+    permissions:
+      contents: read
     env:
-      RUBOCOP_CACHE_ROOT: tmp/rubocop
+      WRANGLER_SEND_METRICS: "false"
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
         with:
-          bundler-cache: true
-
-      - name: Prepare RuboCop cache
-        uses: actions/cache@v4
-        env:
-          DEPENDENCIES_HASH: ${{ hashFiles('.ruby-version', '**/.rubocop.yml', '**/.rubocop_todo.yml', 'Gemfile.lock') }}
-        with:
-          path: ${{ env.RUBOCOP_CACHE_ROOT }}
-          key: rubocop-${{ runner.os }}-${{ env.DEPENDENCIES_HASH }}-${{ github.ref_name == github.event.repository.default_branch && github.run_id || 'default' }}
-          restore-keys: |
-            rubocop-${{ runner.os }}-${{ env.DEPENDENCIES_HASH }}-
-
-      - name: Lint code for consistent style
-        run: bin/rubocop -f github
-
-  test:
-    runs-on: ubuntu-latest
-
-    # services:
-    #  redis:
-    #    image: valkey/valkey:8
-    #    ports:
-    #      - 6379:6379
-    #    options: --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          bundler-cache: true
-
-      - name: Run tests
-        env:
-          RAILS_ENV: test
-          # RAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY }}
-          # REDIS_URL: redis://localhost:6379/0
-        run: bin/rails db:test:prepare test
-
-  system-test:
-    runs-on: ubuntu-latest
-
-    # services:
-    #  redis:
-    #    image: valkey/valkey:8
-    #    ports:
-    #      - 6379:6379
-    #    options: --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          bundler-cache: true
-
-      - name: Run System Tests
-        env:
-          RAILS_ENV: test
-          # RAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY }}
-          # REDIS_URL: redis://localhost:6379/0
-        run: bin/rails db:test:prepare test:system
-
-      - name: Keep screenshots from failed system tests
+          node-version: "22.22.2"
+          cache: npm
+      - name: Pin npm
+        run: npm install --global npm@10.9.7
+      - name: Install locked Node dependencies
+        run: npm ci
+      - name: Check Prettier and Tailwind class formatting
+        run: npm run format:check
+      - name: Check client, server, and tooling types
+        run: npm run typecheck
+      - name: Enforce strict lint and complexity limits
+        run: npm run lint
+      - name: Check framework-aware dead code
+        run: npm run deadcode
+      - name: Report readability measurements
+        run: npm run metrics
+      - name: Run domain and operations unit tests
+        run: npm run test:unit
+      - name: Run React client tests
+        run: npm run test:client
+      - name: Keep readability measurements for review
+        if: always()
         uses: actions/upload-artifact@v4
-        if: failure()
         with:
-          name: screenshots
-          path: ${{ github.workspace }}/tmp/screenshots
+          name: readability-metrics
+          path: tmp/quality/metrics.json
           if-no-files-found: ignore
+          retention-days: 30
+
+  native-workers:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      WRANGLER_SEND_METRICS: "false"
+      CLOUDFLARE_ENV: local
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.22.2"
+          cache: npm
+      - name: Pin npm
+        run: npm install --global npm@10.9.7
+      - name: Install locked Node dependencies
+        run: npm ci
+      - name: Run native D1 and Workflow tests
+        run: npm run test:workers
+      - name: Compile Worker and static client
+        run: npm run build
+      - name: Package native deployment without cloud access
+        run: npx --no-install wrangler deploy --dry-run --config dist/server/wrangler.json
+
+  browser:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      WRANGLER_SEND_METRICS: "false"
+      CLOUDFLARE_ENV: local
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.22.2"
+          cache: npm
+      - name: Pin npm
+        run: npm install --global npm@10.9.7
+      - name: Install locked Node dependencies
+        run: npm ci
+      - name: Install local Chromium
+        run: npx --no-install playwright install --with-deps chromium
+      - name: Compile the actual local Worker and static client
+        run: npm run build
+      - name: Exercise browser against isolated native D1 and assets
+        run: npm run test:e2e
+      - name: Keep browser screenshots and failure traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-rehearsal
+          path: tmp/playwright
+          if-no-files-found: ignore
+          retention-days: 7

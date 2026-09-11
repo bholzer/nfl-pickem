@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2024"],
+    "types": [
+      "@cloudflare/workers-types",
+      "@cloudflare/vitest-plugin/types",
+      "node"
+    ]
+  },
+  "include": [
+    "src/server",
+    "src/shared",
+    "tests/workers",
+    "tests/setup-workers.ts",
+    "tests/env.d.ts"
+  ]
+}

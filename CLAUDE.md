@@ -1,246 +1,159 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+## Project overview
 
-## Project Overview
+NFL Pick'em is a React/TypeScript application backed by a Cloudflare Worker,
+D1, and native Workflows. Players use Discord sign-in or signed submission
+links to make weekly picks; background jobs deliver links, hashes, and standings.
 
-NFL Pick'em is a Rails 8.1 application for running an NFL weekly pick'em pool. Users receive personalized submission links via Discord DMs, submit their picks through a web form, and receive standings updates as games complete. The app uses JWT tokens for authentication, ESPN's API for game data, and Discord's API for messaging.
+## Development and verification
 
-## Development Commands
+Use Node 22.22.2 or later in the Node 22 line and npm 10.9.7.
 
-### Server & Development
-```bash
-# Start development server and CSS watcher
-bin/dev
+```sh
+npm ci
+npm run db:migrate:local
+npm run dev
 
-# Start Rails console
-bin/rails console
+npm run format
+npm run format:check
+npm run typecheck
+npm run lint
+npm run deadcode
+npm run metrics
+npm test
+npm run test:unit
+npm run test:workers
+npm run test:client
 
-# Start Rails server only
-bin/rails server
+npm run build
+npx --no-install playwright install chromium
+npm run test:e2e
+npm run rehearsal:serve
 
-# Watch Tailwind CSS changes
-bin/rails tailwindcss:watch
+npm run deploy:dry-run
 ```
 
-### Database
-```bash
-# Run migrations
-bin/rails db:migrate
+Ordinary development uses port 5173. Create `.dev.vars` from `.dev.vars.example`
+only if it does not already exist; never overwrite local secrets.
 
-# Reset database (drop, create, migrate, seed)
-bin/rails db:reset
+The browser suite and rehearsal use a local build, temporary synthetic D1 data,
+generated signing keys, and blocked non-fixture outbound transport. The rehearsal
+prints player/admin links at `http://127.0.0.1:5180`; stopping it removes its
+temporary state. Screenshots and failure traces go under `tmp/playwright`.
+`deploy:dry-run` builds staging and packages it without publishing.
 
-# Open database console
-bin/rails dbconsole --include-password
-```
+## Readability policy
 
-### Testing
-```bash
-# Run all tests
-bin/rails test
+- Use Prettier defaults and the Tailwind sorter; do not hand-format code or
+  reformat golden reference data. Bulk formatting excludes Markdown and private
+  or generated files.
+- Strict typed ESLint covers application code, tests, configuration, and checked
+  `.mjs` implementations. No blanket `any`, disabled rules, or unchecked sidecars.
+- Cognitive complexity must stay at or below 15, modified cyclomatic complexity
+  at or below 10, and nesting at or below 3. More than 80 nonblank/noncomment
+  function lines or 4 parameters is a review signal, not a reason for arbitrary
+  helpers or fragmenting a coherent test scenario.
+- Preserve Node-only ambient types for operational scripts; import Worker binding
+  types explicitly where modules cross that boundary. Keep indexed-access checks.
+- The documented exceptions cover disposal-owning `using` declarations,
+  Playwright fixture dependency patterns, numeric template interpolation,
+  Workerd module names, and the external Terraform CLI.
+- Knip findings require reference/framework review before deletion. The metrics
+  reporter uses official rule scores and writes `tmp/quality/metrics.json`;
+  compare like populations rather than diluting application scores with tests.
+- See `README.md` for measured cleanup results and the rationale for remaining
+  long UI/durable-orchestration functions.
 
-# Run specific test file
-bin/rails test test/models/submission_test.rb
+## Architecture
 
-# Run specific test
-bin/rails test test/models/submission_test.rb:10
-```
+- `src/client/`: React navigation, picks/standings, job administration, API client,
+  shared UI components, and Tailwind styles.
+- `src/server/index.ts`: Worker entry point, middleware, asset routing, and
+  environment-level request gates.
+- `src/server/auth.ts` and `tokens.ts`: Discord authentication, signed sessions,
+  submission-link tokens, and authorization.
+- `src/server/routes.ts` and `db.ts`: application endpoints and D1 persistence.
+- `src/server/services/`: ESPN access, scoring, grouping, summaries, and Discord
+  delivery. Reuse these services rather than duplicating domain or transport logic.
+- `src/server/jobs/` and `workflows.ts`: job administration, durable history,
+  delivery/effect state, and native Workflow execution.
+- `src/shared/contracts.ts` and `season.ts`: client/server contracts and season
+  validation/date rules, also shared with checked Node tooling.
+- `migrations/`: native D1 SQL schema migrations.
+- `scripts/cloudflare.mjs` and `infrastructure.mjs`: guarded deployment lifecycle
+  and Terraform integration.
+- `tests/`: domain/client/native Worker tests, compatibility fixtures, and
+  browser scenarios. Cached reference fixtures do not require another runtime.
 
-### Code Quality
-```bash
-# Run RuboCop linter
-bundle exec rubocop
+## Application invariants
 
-# Auto-correct RuboCop issues
-bundle exec rubocop -a
+- Enforce identity, authorization, CSRF, pick deadlines, scoring, and tiebreakers
+  on the server. Public standings must not reveal unplayed picks or hidden
+  tiebreakers.
+- Submission links require signed season and week claims. Reject/reissue yearless
+  links; never infer their season from today's date. Preserve summary/hash format
+  and the intended `SUBMISSION_TOKEN_SECRET`; use separate `SESSION_SECRET`
+  values for native sessions in each environment.
+- A season is its starting year; January 2027 belongs to season 2026. Submissions
+  are unique by user/season/week, and stored submission IDs determine detail
+  periods even when URL query parameters conflict.
+- Competition IDs and team IDs are strings. Use the ESPN service's
+  `site.web.api.espn.com` transport with explicit season, regular-season type, and
+  week. Validate returned period metadata; never reinterpret postseason week
+  numbers as regular-season weeks. Reuse status/time and summary formatting.
+- Keep durable delivery fencing, effect records, job history, and suppression
+  expiry intact. Discord delivery and D1 commits are not atomic; review ambiguous
+  sends before retrying. Do not claim exactly-once external delivery.
+- Scheduled hashes must read submissions after the durable kickoff wait.
+  Preserve imported dispatch times. Jobs, retry children, delivery state, and
+  suppression keys are season-scoped; unresolved jobs cannot drift to another
+  season, and resolved retries retain their exact season/week.
+- Keep sends and schedules disabled unless explicitly approved. Do not bypass
+  recipient/channel allowlists or start duplicate dispatchers.
 
-# Run Brakeman security scanner
-bundle exec brakeman
+## Deployment and private data
 
-# Audit gems for security vulnerabilities
-bundle exec bundle-audit check --update
-```
+Read `README.md` for the complete guarded lifecycle before any remote operation.
+`node scripts/cloudflare.mjs --help` lists the current command contract;
+`plan` is offline. Cloud changes and Discord activation require separate,
+explicit approvals.
 
-### Background Jobs
-```bash
-# Run jobs worker (processes Solid Queue jobs)
-bin/jobs
+Terraform owns D1 and Worker identity; Wrangler owns deployments, assets,
+bindings, native Workflow definitions/schedules, and approved custom domains.
+Retain the provider lock and private per-environment Terraform state under
+`~/.config/nfl-pickem/terraform/`. Never clear state or resource IDs to force a retry.
 
-# Rails console commands for job management
-SolidQueue::Job.all                          # View all jobs
-SolidQueue::Job.clear_finished_in_batches    # Clear completed jobs
-```
+Keep native secret bundles outside the repository, owner-only. Do not print
+tokens, secret values, or database snapshots. Preserve `.dev.vars`, local D1
+state, private credentials, and uncommitted user work.
 
-## Deployment (Kamal)
+Use `maintenance` to fence delivery, disable schedules/sends, pause Workflows,
+and retain routes for a current export. `--source-quiesced` acknowledges frozen
+source writers and dispatchers. Recovery requires verified data and a deliberate
+native publication/activation; individually paused Workflows do not auto-resume.
+Migration `0003_seasons.sql` requires old native instances to be retired, not just
+paused, and rejects nonterminal D1 history. Never resume pre-cutover native code;
+recover reviewed work through new season-pinned retry children retaining delivery
+scopes. Verify timestamp-derived historical season backfills and an actual private
+backup before migration. Follow README's existing-staging cutover sequence.
 
-This app deploys to a VPS using Kamal:
+For an unscheduled Workflow, omit `schedules` instead of assigning an empty array.
+Use native Workflow schedules, not duplicate Worker crons. Build the selected
+environment and deploy its generated `dist/server/wrangler.json` without `--env`.
+Do not change unrelated DNS records, zone configuration, or OAuth callbacks.
 
-```bash
-# Deploy application
-bin/kamal deploy
+Historical implementation/data backups are private and outside this checkout;
+see the retirement-backup section in `README.md`. Do not restore them over current
+source or databases.
 
-# Access production console
-bin/kamal console
+## UI design
 
-# Access production shell
-bin/kamal shell
+Follow @DESIGN_SYSTEM.md: mobile-first, flat, information-dense, high-contrast,
+accessible interfaces with visible focus states and both light/dark styling.
 
-# View logs
-bin/kamal logs
-
-# Database console
-bin/kamal dbc
-
-# Redeploy (faster, doesn't rebuild)
-bin/kamal redeploy
-```
-
-**Important**: Secrets are stored in `.kamal/secrets` (gitignored). Deploy configuration is in `config/deploy.yml`.
-
-## Application Architecture
-
-### Core Data Flow
-
-1. **User Sync**: Discord bot fetches guild members and syncs to `users` table
-2. **Submission Link Delivery**: `DeliverSubmissionLinksJob` sends personalized JWT-authenticated URLs via Discord DM (Tuesdays 9am)
-3. **Pick Submission**: Users access their link, view ESPN games for the week, submit picks and Monday Night Football tiebreaker
-4. **Scoring**: `DeliverStandingsJob` polls ESPN API during game times (Thu/Sun/Mon), calculates standings, sends updates to Discord
-5. **Hash Verification**: `DeliverHashesJob` sends SHA256 hashes of all submissions for transparency
-
-### Key Services
-
-**EspnScoreboard** (`app/services/espn_scoreboard.rb`)
-- Fetches NFL game data from ESPN API
-- Provides game status, scores, winners, and timing information
-- Central time zone conversion for game times
-- Used by both submission validation and scoring
-
-**ScoringService** (`app/services/scoring_service.rb`)
-- Calculates correct picks by comparing submissions to ESPN results
-- Determines contenders (anyone who can mathematically win)
-- Applies tiebreaker (Monday Night Football total score) when needed
-- Returns sorted standings with winner/contender flags
-
-**DiscordService** (`app/services/discord_service.rb`)
-- Wraps Discord API v10 for bot operations
-- Handles DM creation and message sending
-- Uses ERB templates from `app/views/discord_messages/`
-- Requires bot token from Rails credentials
-
-**JwtService** (`app/services/jwt_service.rb`)
-- Generates week-specific tokens for submission URLs
-- Tokens include user_id, username, and week
-- Submission tokens valid for 365 days
-- Controller uses `JwtService.verify(token)` to authenticate
-
-### Models
-
-**Submission** (`app/models/submission.rb`)
-- Stores picks as JSON hash: `{ competition_id => selected_team_id }`
-- Unique constraint on `user_id + week`
-- `#summary` generates human-readable pick list
-- `#hash` creates SHA256 digest for verification
-
-**User** (`app/models/user.rb`)
-- Linked to Discord via `discord_user_id` and `discord_username`
-- `#weekly_token(week)` generates JWT for submission URLs
-
-### Background Jobs (Solid Queue)
-
-Jobs are configured in `config/recurring.yml` with cron schedules:
-
-- **DeliverSubmissionLinksJob**: Tuesday 9am - sends submission links to all users
-- **ScheduleHashDeliveryJob**: Thursday 9am - schedules hash delivery before games start
-- **DeliverHashesJob**: Runs after hash scheduling - sends submission hashes
-- **DeliverStandingsJob**: Runs every 15 minutes during game windows (Thu 9pm-11pm, Sun 3pm-11pm, Mon 9pm-11pm)
-
-The `job` server role in Kamal runs `bin/jobs` which processes the Solid Queue.
-
-### Pick Submission Flow
-
-1. User clicks JWT link from Discord DM
-2. `SubmissionsController#new` verifies token and loads week's games via `EspnScoreboard`
-3. Form displays games with radio buttons for home/away team selection
-4. On submit, `ScoringService.filter_valid_picks` removes picks for started games
-5. Submission saved with filtered picks + tiebreaker
-
-### Standings Calculation
-
-The `ScoringService#standings` method:
-1. Counts correct picks for each submission by comparing to `EspnScoreboard#results`
-2. Identifies leader(s) and calculates who can catch up based on remaining games
-3. Marks submissions as "contenders" if mathematically alive
-4. Determines winner(s) when only one contender remains OR all games complete + tiebreaker applied
-
-### Discord Message Templates
-
-Templates in `app/views/discord_messages/`:
-- `submission_link.text.erb` - Weekly pick submission link
-- `standings.text.erb` - Current standings with correct picks and contenders
-- `hashes.text.erb` - SHA256 hashes of all submissions for verification
-
-## Configuration & Secrets
-
-**Rails Credentials** (edit with `bin/rails credentials:edit`):
-- `discord.bot_token` - Discord bot authentication
-- `secret_key_base` - JWT signing key
-
-**Kamal Secrets** (`.kamal/secrets`, gitignored):
-- `KAMAL_REGISTRY_PASSWORD` - Docker registry password
-- `RAILS_MASTER_KEY` - Rails credentials encryption key
-
-## Important Patterns
-
-### ESPN API Integration
-- Always use `EspnScoreboard` service, never call ESPN API directly
-- Game status values: `"STATUS_SCHEDULED"`, `"STATUS_IN_PROGRESS"`, `"STATUS_FINAL"`
-- Competition IDs are strings from ESPN and used as keys in submission picks
-- Times are converted from UTC to Central timezone
-
-### JWT Authentication
-- Tokens are week-specific and embedded in URLs
-- Use `JwtService.verify(token)` in controllers to authenticate
-- Failed verification returns `nil`, not an exception
-- User identity comes from JWT payload, not session
-
-### Discord Bot Operations
-- All messaging goes through `DiscordService`
-- Use `render_message(template, locals)` for formatted messages
-- DM sending is two-step: create channel, then send message
-- Bot token must have proper intents enabled in Discord Developer Portal
-
-### Job Scheduling
-- Recurring jobs defined in `config/recurring.yml`
-- Use cron syntax for complex schedules (e.g., `'*/15 21-23 * * 4'` for every 15 min, 9pm-11pm on Thursdays)
-- Jobs should be idempotent - safe to run multiple times
-- Check game state before sending messages to avoid spam
-
-## UI Design
-The UI design is described/defined by @DESIGN_SYSTEM.md
-
-### Dark Mode Implementation
-
-The application supports dark mode with both system preference detection and manual toggle:
-
-**Tailwind v4 Configuration** (`app/assets/stylesheets/application.tailwind.css`):
-```css
-@import "tailwindcss";
-@custom-variant dark (&:where(.dark, .dark *));
-```
-
-This configures Tailwind v4 to use class-based dark mode (`.dark` on `<html>` element) instead of media queries.
-
-**Stimulus Controller** (`app/javascript/controllers/dark_mode_controller.js`):
-- Attached to `<html>` element via `data-controller="dark-mode"`
-- On connect: checks localStorage for saved preference, falls back to system preference
-- `toggle()` method: switches between light and dark modes
-- Saves user preference to localStorage as `theme` ('light' or 'dark')
-- Listens for system preference changes and updates accordingly if no manual preference set
-
-**Layout Configuration** (`app/views/layouts/application.html.erb`):
-- Uses `stylesheet_link_tag "tailwind"` to reference the built CSS from `app/assets/builds/tailwind.css`
-- `<html>` element has `data-controller="dark-mode"` to initialize the dark mode controller
-- Dark mode toggle button in navigation calls `data-action="click->dark-mode#toggle"`
-
-**Important**: The built CSS file must be referenced as `"tailwind"` not `:app` to properly load from the builds directory.
+`src/client/styles.css` uses Tailwind v4 with a class-based `dark` variant.
+`ThemePicker` in `src/client/ui.tsx` maintains the root `dark` class and the
+`theme` localStorage preference (`light`, `dark`, or `auto`), including system
+preference changes and unavailable browser storage. Reuse existing components
+and styles rather than introducing a second theme or component convention.

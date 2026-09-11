@@ -1,0 +1,346 @@
+[
+  {
+    "standings": [
+      {
+        "submissionId": 1,
+        "correctPicks": 1,
+        "remainingPicks": {
+          "2": "home-2"
+        },
+        "tiebreaker": 41,
+        "tiebreakerDiff": null,
+        "contender": true,
+        "winner": false,
+        "rank": 1
+      },
+      {
+        "submissionId": 2,
+        "correctPicks": 0,
+        "remainingPicks": {
+          "2": "away-2"
+        },
+        "tiebreaker": 41,
+        "tiebreakerDiff": null,
+        "contender": true,
+        "winner": false,
+        "rank": 2
+      }
+    ],
+    "showTiebreaker": false,
+    "summaries": [
+      "Player One\nAway 1 at Home 1: Home 1\nAway 2 at Home 2: Home 2\nTiebreaker: 41",
+      "Player One\nAway 1 at Home 1: Away 1\nAway 2 at Home 2: Away 2\nTiebreaker: 41"
+    ],
+    "hashes": [
+      "acdb269bc83a9c774911147f5e9de08a70481d7ee8ae48b3e876183b345f0fb6",
+      "1291ca328537588bcf8ba59c972e4d2fcd08bfd742c9e44bff89e90efea2f554"
+    ],
+    "groups": []
+  },
+  {
+    "standings": [
+      {
+        "submissionId": 1,
+        "correctPicks": 1,
+        "remainingPicks": {
+          "2": "home-2"
+        },
+        "tiebreaker": 41,
+        "tiebreakerDiff": null,
+        "contender": true,
+        "winner": true,
+        "rank": 1
+      },
+      {
+        "submissionId": 2,
+        "correctPicks": 0,
+        "remainingPicks": {
+          "2": "home-2"
+        },
+        "tiebreaker": 41,
+        "tiebreakerDiff": null,
+        "contender": false,
+        "winner": false,
+        "rank": 2
+      }
+    ],
+    "showTiebreaker": false,
+    "summaries": [
+      "Player One\nAway 1 at Home 1: Home 1\nAway 2 at Home 2: Home 2\nTiebreaker: 41",
+      "Player One\nAway 1 at Home 1: Away 1\nAway 2 at Home 2: Home 2\nTiebreaker: 41"
+    ],
+    "hashes": [
+      "acdb269bc83a9c774911147f5e9de08a70481d7ee8ae48b3e876183b345f0fb6",
+      "42bcdb4bfff12362afe6ba7ac291714135e69d790c61a0f32701cb4939f571d2"
+    ],
+    "groups": []
+  },
+  {
+    "standings": [
+      {
+        "submissionId": 1,
+        "correctPicks": 2,
+        "remainingPicks": {
+          "3": "home-3"
+        },
+        "tiebreaker": 41,
+        "tiebreakerDiff": null,
+        "contender": true,
+        "winner": true,
+        "rank": 1
+      },
+      {
+        "submissionId": 2,
+        "correctPicks": 0,
+        "remainingPicks": {
+          "3": "away-3"
+        },
+        "tiebreaker": 41,
+        "tiebreakerDiff": null,
+        "contender": false,
+        "winner": false,
+        "rank": 2
+      }
+    ],
+    "showTiebreaker": false,
+    "summaries": [
+      "Player One\nAway 1 at Home 1: Home 1\nAway 2 at Home 2: Home 2\nAway 3 at Home 3: Home 3\nTiebreaker: 41",
+      "Player One\nAway 1 at Home 1: Away 1\nAway 2 at Home 2: Away 2\nAway 3 at Home 3: Away 3\nTiebreaker: 41"
+    ],
+    "hashes": [
+      "0b0590266a74ba8472ef2565dbbff41bd26b6f0102f48bbce2b22d50dc8a19c4",
+      "da0073d7e14fb8eadb11a4e52ab8f8459a3b6f5784a02a6b90939beafc0ca4a5"
+    ],
+    "groups": []
+  },
+  {
+    "standings": [
+      {
+        "submissionId": 1,
+        "correctPicks": 2,
+        "remainingPicks": {},
+        "tiebreaker": 38,
+        "tiebreakerDiff": 2,
+        "contender": true,
+        "winner": true,
+        "rank": 1
+      },
+      {
+        "submissionId": 2,
+        "correctPicks": 2,
+        "remainingPicks": {},
+        "tiebreaker": 42,
+        "tiebreakerDiff": 2,
+        "contender": true,
+        "winner": true,
+        "rank": 1
+      },
+      {
+        "submissionId": 3,
+        "correctPicks": 2,
+        "remainingPicks": {},
+        "tiebreaker": 49,
+        "tiebreakerDiff": 9,
+        "contender": true,
+        "winner": false,
+        "rank": 3
+      }
+    ],
+    "showTiebreaker": true,
+    "summaries": [
+      "Player One\nAway 1 at Home 1: Home 1\nAway 2 at Home 2: Home 2\nTiebreaker: 38",
+      "Player One\nAway 1 at Home 1: Home 1\nAway 2 at Home 2: Home 2\nTiebreaker: 42",
+      "Player One\nAway 1 at Home 1: Home 1\nAway 2 at Home 2: Home 2\nTiebreaker: 49"
+    ],
+    "hashes": [
+      "7f279f7315674f0465608b9c580f3dd10e3ab8fb6e9cf271bdc8bbf0e7676e9e",
+      "d79c5e28aa27317008458f05812cfb9464e236ecd31c0a31b953ab0b5de2ef50",
+      "01e7f312590fa7482564cb03de2fa617a49f71ce231dc622a8b38eb1f802ddc1"
+    ],
+    "groups": [
+      "monday"
+    ]
+  },
+  {
+    "standings": [
+      {
+        "submissionId": 2,
+        "correctPicks": 1,
+        "remainingPicks": {},
+        "tiebreaker": 20,
+        "tiebreakerDiff": null,
+        "contender": true,
+        "winner": true,
+        "rank": 1
+      },
+      {
+        "submissionId": 1,
+        "correctPicks": 1,
+        "remainingPicks": {},
+        "tiebreaker": 10,
+        "tiebreakerDiff": null,
+        "contender": true,
+        "winner": true,
+        "rank": 2
+      }
+    ],
+    "showTiebreaker": true,
+    "summaries": [
+      "Player One\nAway 401 at Home 401: Home 401\nTiebreaker: 10",
+      "Player One\nAway 401 at Home 401: Home 401\nTiebreaker: 20"
+    ],
+    "hashes": [
+      "e5a0de76510f00f79453f495f9a8a74b1109197522e312410495d774b926dedc",
+      "a55f115d0cee2b86ec17f4a28d4be6317473c5fd118e39f78365361d4bd7ed7c"
+    ],
+    "groups": [
+      "sunday_early"
+    ]
+  },
+  {
+    "standings": [
+      {
+        "submissionId": 1,
+        "correctPicks": 1,
+        "remainingPicks": {
+          "2": "home-2"
+        },
+        "tiebreaker": 48,
+        "tiebreakerDiff": null,
+        "contender": true,
+        "winner": false,
+        "rank": 1
+      },
+      {
+        "submissionId": 2,
+        "correctPicks": 1,
+        "remainingPicks": {
+          "2": "away-2"
+        },
+        "tiebreaker": 30,
+        "tiebreakerDiff": null,
+        "contender": true,
+        "winner": false,
+        "rank": 2
+      }
+    ],
+    "showTiebreaker": false,
+    "summaries": [
+      "Player One\nAway 1 at Home 1: Home 1\nAway 2 at Home 2: Home 2\nTiebreaker: 48",
+      "Player One\nAway 1 at Home 1: Home 1\nAway 2 at Home 2: Away 2\nTiebreaker: 30"
+    ],
+    "hashes": [
+      "0ecc14de0f97dc9dad8477163754a51690af6d7cc6b83c30d55ec9981ca77015",
+      "c9adbc6f346088b0324e0bb693cbd57da5fdd7f193fa01a4bef9cba3a3e9937b"
+    ],
+    "groups": []
+  },
+  {
+    "standings": [
+      {
+        "submissionId": 1,
+        "correctPicks": 0,
+        "remainingPicks": {},
+        "tiebreaker": 0,
+        "tiebreakerDiff": 0,
+        "contender": true,
+        "winner": true,
+        "rank": 1
+      },
+      {
+        "submissionId": 2,
+        "correctPicks": 0,
+        "remainingPicks": {},
+        "tiebreaker": 1,
+        "tiebreakerDiff": 1,
+        "contender": true,
+        "winner": false,
+        "rank": 2
+      }
+    ],
+    "showTiebreaker": true,
+    "summaries": [
+      "Player One\nAway 401 at Home 401: Home 401\nTiebreaker: 0",
+      "Player One\nAway 401 at Home 401: Away 401\nTiebreaker: 1"
+    ],
+    "hashes": [
+      "b3214e9ed6a9348b24672a495277be568afb1e7528120621569c3b98773153dd",
+      "2c077981b9888019203e1d86ba1986e4fa6c67e182e4a2e42dbd94d22b14e709"
+    ],
+    "groups": [
+      "monday"
+    ]
+  },
+  {
+    "standings": [
+      {
+        "submissionId": 1,
+        "correctPicks": 0,
+        "remainingPicks": {
+          "2": "home-2",
+          "3": "home-3",
+          "10": "away-10"
+        },
+        "tiebreaker": 37,
+        "tiebreakerDiff": null,
+        "contender": true,
+        "winner": true,
+        "rank": 1
+      }
+    ],
+    "showTiebreaker": false,
+    "summaries": [
+      "Zoë 雪\nEarlier: Home 3\nDix à Québec: Équipe Dix\nDeux à Montréal: Équipe Deux\nTiebreaker: 37"
+    ],
+    "hashes": [
+      "b795c6ca50ff595ca3d012920867a9571321fcabd8b888fc3a0914c38e9bb2e0"
+    ],
+    "groups": []
+  },
+  {
+    "standings": [
+      {
+        "submissionId": 1,
+        "correctPicks": 0,
+        "remainingPicks": {},
+        "tiebreaker": 41,
+        "tiebreakerDiff": null,
+        "contender": true,
+        "winner": true,
+        "rank": 1
+      }
+    ],
+    "showTiebreaker": false,
+    "summaries": [
+      "Tiebreaker: 41"
+    ],
+    "hashes": [
+      "5034a3e3fa484ccffda5acab3b2cdfa17b2dfaf5ca95fc05079695ed98e20cc9"
+    ],
+    "groups": []
+  },
+  {
+    "standings": [
+      {
+        "submissionId": 1,
+        "correctPicks": 0,
+        "remainingPicks": {
+          "401": "home-401"
+        },
+        "tiebreaker": 41,
+        "tiebreakerDiff": null,
+        "contender": true,
+        "winner": true,
+        "rank": 1
+      }
+    ],
+    "showTiebreaker": false,
+    "summaries": [
+      " Zoë\nAway 401 at Home 401: Home 401\nTiebreaker: 41"
+    ],
+    "hashes": [
+      "b9bf8394ed44dd8b615ef07b351adae0a4619192a0331148b663eb969504d9ab"
+    ],
+    "groups": []
+  }
+]

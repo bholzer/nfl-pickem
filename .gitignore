@@ -4,35 +4,74 @@
 # belong in git's global ignore instead:
 # `$XDG_CONFIG_HOME/git/ignore` or `~/.config/git/ignore`
 
-# Ignore bundler config.
-/.bundle
 
-# Ignore all environment files.
-/.env*
+# Environment files at any depth, including environment-specific overrides.
+.env*
 
-# Ignore all logfiles and tempfiles.
-/log/*
-/tmp/*
-!/log/.keep
-!/tmp/.keep
+# Local data, logs, and temporary browser artifacts.
+/log/
+/tmp/
+/storage/
+/backups/
+/snapshots/
+/exports/
+/private/
+*.log
 
-# Ignore pidfiles, but keep the directory.
-/tmp/pids/*
-!/tmp/pids/
-!/tmp/pids/.keep
+# Database files and ad-hoc SQL exports; schema migrations remain versioned.
+*.sqlite*
+*.db
+*.db-*
+*.db3*
+*.sql
+!/migrations/*.sql
+*.dump
+*.bak
+*.backup
 
-# Ignore storage (uploaded files in development and any SQLite databases).
-/storage/*
-!/storage/.keep
-/tmp/storage/*
-!/tmp/storage/
-!/tmp/storage/.keep
+# Private keys, including restored credential backups.
+*.key
+*.pem
+*.p12
+*.pfx
+id_rsa
+id_ecdsa
+id_ed25519
 
-/public/assets
+# Private deployment bundles and restored legacy credentials.
+*-secrets.json
+cloudflare-api-token*
+.npmrc
+/.kamal/secrets*
+/config/credentials*
 
-# Ignore key files for decrypting credentials and more.
-/config/*.key
 
 
-/app/assets/builds/*
-!/app/assets/builds/.keep
+# Cloudflare / npm application tooling.
+node_modules/
+/dist/
+.wrangler/
+.dev.vars*
+!.dev.vars.example
+/coverage/
+/playwright-report/
+/test-results/
+/blob-report/
+*.tsbuildinfo
+
+# Machine-local editor and assistant settings.
+.DS_Store
+/.claude/settings.local.json
+
+
+# Terraform working files; environment state is stored privately outside the repo.
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+*.tfvars.json
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json

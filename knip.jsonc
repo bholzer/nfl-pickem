@@ -1,0 +1,25 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
+  "includeEntryExports": true,
+  // Workerd provides cloudflare:* modules; they are not an npm package.
+  "ignoreDependencies": ["cloudflare"],
+  // The guarded infrastructure runner invokes an installed external CLI.
+  "ignoreBinaries": ["terraform"],
+  "entry": [
+    "src/client/main.tsx",
+    "src/server/index.ts",
+    "scripts/cloudflare.mjs",
+    "scripts/rehearsal/serve.mjs",
+    "scripts/quality.mjs",
+    "tests/**/*.test.{ts,tsx}",
+    "tests/e2e/**/*.ts",
+    "tests/setup-*.ts",
+    "tests/env.d.ts",
+  ],
+  "project": [
+    "src/**/*.{ts,tsx,css}",
+    "scripts/**/*.{mjs,mts,ts}",
+    "tests/**/*.{ts,tsx}",
+    "*.{ts,mjs}",
+  ],
+}
