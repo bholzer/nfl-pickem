@@ -38,7 +38,7 @@ jobs:
         run: npm run test:client
       - name: Keep readability measurements for review
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: readability-metrics
           path: tmp/quality/metrics.json
@@ -94,7 +94,7 @@ jobs:
         run: npm run test:e2e
       - name: Keep browser screenshots and failure traces
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: browser-rehearsal
           path: tmp/playwright
