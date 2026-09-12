@@ -163,7 +163,8 @@ rather than widening the page. Empty standings provide a direct route to picking
 
 History uses the shared page toolbar for the season picker and Make picks action,
 with divided rows rather than individually decorated cards. Details use a compact
-correct-picks/tiebreaker strip and a reading column capped at 760px.
+correct-picks/tiebreaker strip and share the application's content width in both
+Compact and Detailed views.
 
 Read-only matchups are result sheets, not disabled pick forms. A keyboard-accessible
 Compact / Detailed switch controls their density. Compact is the default; the

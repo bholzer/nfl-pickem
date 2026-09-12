@@ -806,9 +806,6 @@
     font-size: 12px;
     line-height: 1.5;
   }
-  .submission-detail {
-    max-width: 760px;
-  }
   .submission-view-toolbar {
     display: flex;
     align-items: center;
