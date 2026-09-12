@@ -245,8 +245,10 @@ the file on exit. Secret values are not passed as command-line arguments.
 Runs are serialized per environment and do not cancel an in-progress release.
 Do not run local cloud operations concurrently. First provisioning/publication,
 breaking migrations, domain or Workflow configuration changes, and deliberate
-delivery activation remain operator tasks below. Production currently has no
-D1 ID or public route; initialize it and commit the approved configuration first.
+delivery activation remain operator tasks below. Staging and production are
+initialized, with their D1 IDs and approved custom domains recorded in
+`wrangler.jsonc`. Production was initialized with a fresh pool and delivery paused;
+Discord sends and native schedules remain disabled pending separate approval.
 
 ### Routine migrations
 
