@@ -196,7 +196,10 @@ Selection and outcome have different visual languages:
 - **Pending:** a neutral badge with a clock. A live lead is not a final outcome.
 
 Outcome badges describe the pick, not the chosen team's identity. Detailed shows
-the kickoff time and game status. Compact keeps that information available to
+the kickoff once in Central time and a separate game status: Scheduled for
+upcoming games, otherwise ESPN's status detail (live clock, final, postponed).
+Do not repeat ESPN's scheduled date string beneath the kickoff.
+Compact keeps that information available to
 screen readers and exposes game status through an outcome tooltip, without an
 extra visible status line. Use text and distinct icons so outcomes never depend
 on color alone.

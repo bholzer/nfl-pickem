@@ -837,6 +837,19 @@ function pickPresentation(pick: SubmissionDetail["picks"][number]) {
   return pick.correct ? pickPresentations.correct : pickPresentations.incorrect;
 }
 
+function SubmissionGameMeta({ game }: { game: Game }) {
+  const statusDetail =
+    game.status === "STATUS_SCHEDULED" ? "Scheduled" : game.statusDetail;
+  return (
+    <p className="submission-game-meta">
+      <time dateTime={game.date}>
+        {centralDate.format(new Date(game.date))}
+      </time>
+      <span>{statusDetail}</span>
+    </p>
+  );
+}
+
 function SubmissionOutcome({
   presentation,
   game,
@@ -897,14 +910,7 @@ function SubmissionPick({
           <h2 className={game ? "sr-only" : "font-semibold"}>
             {game?.name ?? `Game ${pick.competitionId}`}
           </h2>
-          {game && (
-            <p className="submission-game-meta">
-              <time dateTime={game.date}>
-                {centralDate.format(new Date(game.date))}
-              </time>
-              <span>{game.statusDetail}</span>
-            </p>
-          )}
+          {game && <SubmissionGameMeta game={game} />}
         </div>
         <SubmissionOutcome
           presentation={presentation}

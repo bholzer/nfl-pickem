@@ -316,6 +316,45 @@ describe("authentication and navigation", () => {
   });
 });
 
+describe("submission details", () => {
+  it("shows scheduled kickoff once in Central time while retaining live status", async () => {
+    const scheduled = {
+      ...game,
+      date: "2026-09-27T17:00:00Z",
+      statusDetail: "Sun, September 27th at 1:00 PM EDT",
+    };
+    const live = {
+      ...game,
+      id: "game2",
+      date: "2026-09-27T20:25:00Z",
+      status: "STATUS_IN_PROGRESS",
+      statusDetail: "7:32 - 3rd Quarter",
+    };
+    network.use(
+      http.get("http://localhost/api/submissions/81", () =>
+        HttpResponse.json({
+          ...detail,
+          scoreboard: { ...detail.scoreboard, games: [scheduled, live] },
+          picks: [scheduled, live].map((game) => ({
+            competitionId: game.id,
+            selectedTeamId: game.awayTeam.id,
+            winningTeamId: null,
+            correct: false,
+            game,
+          })),
+        }),
+      ),
+    );
+    mount("/submissions/81?season=2026&week=4");
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Detailed" }),
+    );
+    expect(screen.getByText("Sun, Sep 27, 12:00 PM CDT")).toBeVisible();
+    expect(screen.queryByText(scheduled.statusDetail)).not.toBeInTheDocument();
+    expect(screen.getByText(live.statusDetail)).toBeVisible();
+  });
+});
+
 describe("picks and standings", () => {
   it("validates incomplete picks then saves chosen teams and numeric tiebreaker to the selected week", async () => {
     network.use(
