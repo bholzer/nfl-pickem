@@ -9,7 +9,7 @@
     "npm": ">=10.9.7 <11"
   },
   "overrides": {
-    "vitest": "4.1.11"
+    "vitest": "5.0.0"
   },
   "scripts": {
     "dev": "CLOUDFLARE_ENV=local WRANGLER_SEND_METRICS=false vite --host 127.0.0.1",
@@ -76,7 +76,7 @@
     "typescript": "5.9.3",
     "typescript-eslint": "8.70.0",
     "vite": "8.3.0",
-    "vitest": "4.1.11",
+    "vitest": "5.0.0",
     "wrangler": "4.131.0"
   }
 }
