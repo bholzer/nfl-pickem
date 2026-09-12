@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useReducer,
   useRef,
   useState,
   type ReactNode,
@@ -127,28 +128,73 @@ interface ResourceState<T> {
   data?: T;
   error?: unknown;
   loading: boolean;
+  refreshing: boolean;
 }
-export function useResource<T>(path: string | null): ResourceState<T> & {
+
+type ResourceAction<T> =
+  | { type: "start"; path: string | null; retain: boolean }
+  | { type: "success"; path: string; data: T }
+  | { type: "error"; path: string; error: unknown };
+
+function resourceReducer<T>(
+  state: ResourceState<T> & { path: string | null },
+  action: ResourceAction<T>,
+): ResourceState<T> & { path: string | null } {
+  switch (action.type) {
+    case "start":
+      if (
+        action.retain &&
+        state.path === action.path &&
+        state.data !== undefined
+      ) {
+        return { ...state, refreshing: true };
+      }
+      return { path: action.path, loading: true, refreshing: false };
+    case "success":
+      return {
+        path: action.path,
+        data: action.data,
+        loading: false,
+        refreshing: false,
+      };
+    case "error": {
+      const denied =
+        action.error instanceof RequestError &&
+        (action.error.status === 401 || action.error.status === 403);
+      return {
+        path: action.path,
+        data: denied ? undefined : state.data,
+        error: action.error,
+        loading: false,
+        refreshing: false,
+      };
+    }
+  }
+}
+export function useResource<T>(
+  path: string | null,
+  { retainDataOnReload = false }: { retainDataOnReload?: boolean } = {},
+): ResourceState<T> & {
   reload: () => void;
 } {
   const { expire } = useSession();
   const [version, setVersion] = useState(0);
-  const [state, setState] = useState<
-    ResourceState<T> & {
-      path: string | null;
-    }
-  >({ path, loading: true });
+  const [state, dispatch] = useReducer(resourceReducer<T>, {
+    path,
+    loading: true,
+    refreshing: false,
+  });
   const reload = useCallback(() => {
     setVersion((value) => value + 1);
   }, []);
   useEffect(() => {
     const controller = new AbortController();
-    setState({ path, loading: true });
+    dispatch({ type: "start", path, retain: retainDataOnReload });
     if (path) {
       request<T>(path, { signal: controller.signal })
         .then((data) => {
           if (!controller.signal.aborted) {
-            setState({ path, data, loading: false });
+            dispatch({ type: "success", path, data });
           }
         })
         .catch((error: unknown) => {
@@ -158,14 +204,17 @@ export function useResource<T>(path: string | null): ResourceState<T> & {
           if (error instanceof RequestError && error.status === 401) {
             expire();
           }
-          setState({ path, error, loading: false });
+          dispatch({ type: "error", path, error });
         });
     }
     return () => {
       controller.abort();
     };
-  }, [path, version, expire]);
-  return { ...(state.path === path ? state : { loading: true }), reload };
+  }, [path, version, expire, retainDataOnReload]);
+  return {
+    ...(state.path === path ? state : { loading: true, refreshing: false }),
+    reload,
+  };
 }
 
 type MutationResult<T> =

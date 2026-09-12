@@ -40,8 +40,15 @@ supporting context. The approved editorial direction, shared tokens, responsive
 behavior, and accessibility rules are documented in [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md).
 Fonts are self-hosted; appearance follows the system or a saved light/dark preference.
 
-Picks and standings are the primary destinations. Home opens unfinished picks or
-the selected week's standings after submission, without changing explicit deep links.
+Home opens **Your week**: submission/draft status and deadline, your own weekly
+place/correct/remaining summary, live picks, the next kickoff group, recent finals,
+and a brief previous-week recap. Pick actions and full standings remain directly
+accessible; explicit deep links and personalized submission links are unchanged.
+Home shares the submission matchup renderer, with visible game status on compact
+rows. It checks for updates while open, pauses polling when hidden, and retains
+clearly marked stale results on refresh failure. The authenticated `/api/dashboard`
+uses a single scoreboard snapshot per period for personal standings and outcomes,
+without exposing competitors' private picks or calculating submission hashes.
 Account, theme, and administrator controls are grouped in the account menu.
 Season, week, theme, and job filters use styled keyboard-accessible option lists.
 Pick progress stays beside submit/update in the sticky dock. Saved submissions

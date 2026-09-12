@@ -1,7 +1,12 @@
 import * as Select from "@radix-ui/react-select";
 import { useEffect, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
-import type { SeasonsData, SeasonWeek, Team } from "../shared/contracts";
+import type {
+  PublicStanding,
+  SeasonsData,
+  SeasonWeek,
+  Team,
+} from "../shared/contracts";
 import { errorMessage, RequestError, useResource } from "./api";
 
 export const centralDate = new Intl.DateTimeFormat("en-US", {
@@ -19,6 +24,44 @@ export const centralDay = new Intl.DateTimeFormat("en-US", {
   month: "long",
   day: "numeric",
 });
+export const centralTime = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/Chicago",
+  hour: "numeric",
+  minute: "2-digit",
+  timeZoneName: "short",
+});
+
+export function PersonalStanding({
+  standing,
+  playerCount,
+  hasResults,
+}: {
+  standing: Pick<PublicStanding, "rank" | "correctPicks" | "remainingCount">;
+  playerCount: number;
+  hasResults: boolean;
+}) {
+  return (
+    <section className="standings-overview" aria-label="Your week at a glance">
+      <div className="stat-card">
+        <span className="stat-label">Your place</span>
+        <strong className="stat-value">
+          {hasResults ? `#${standing.rank}` : "—"}
+        </strong>
+        <span className="muted">
+          {hasResults ? `of ${playerCount} players` : "Awaiting results"}
+        </span>
+      </div>
+      <div className="stat-card">
+        <span className="stat-label">Correct</span>
+        <strong className="stat-value">{standing.correctPicks}</strong>
+      </div>
+      <div className="stat-card">
+        <span className="stat-label">Picks left</span>
+        <strong className="stat-value">{standing.remainingCount}</strong>
+      </div>
+    </section>
+  );
+}
 
 export function ErrorNotice({
   error,

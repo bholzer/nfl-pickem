@@ -1,5 +1,4 @@
 import {
-  Fragment,
   useEffect,
   useMemo,
   useState,
@@ -8,7 +7,6 @@ import {
 } from "react";
 import {
   Link,
-  Navigate,
   useNavigate,
   useParams,
   useSearchParams,
@@ -30,12 +28,15 @@ import {
   type DraftEdits,
   type DraftSave,
 } from "./drafts";
+import { PickOutcomeKey, SubmissionPickList } from "./submission-picks";
 import {
   centralDate,
   centralDay,
+  centralTime,
   ErrorNotice,
   PageHeading,
   periodQuery,
+  PersonalStanding,
   ResourceView,
   SeasonPicker,
   TeamDisplay,
@@ -43,7 +44,7 @@ import {
   WeekPicker,
 } from "./ui";
 
-export function PicksPage({ landing }: { landing?: boolean }) {
+export function PicksPage() {
   const [params] = useSearchParams();
   const { user } = useSession();
   const week = params.get("week") ?? "current";
@@ -52,16 +53,7 @@ export function PicksPage({ landing }: { landing?: boolean }) {
     `/api/weeks/${encodeURIComponent(week)}${season ? `?season=${encodeURIComponent(season)}` : ""}`,
   );
   const period = resource.data?.scoreboard;
-  const redirect = landing && Boolean(resource.data?.submission);
-  useResolvedPeriod(redirect ? undefined : period);
-  if (redirect && period) {
-    return (
-      <Navigate
-        replace
-        to={`/standings?season=${period.season}&week=${period.week}`}
-      />
-    );
-  }
+  useResolvedPeriod(period);
   return (
     <>
       <PageHeading
@@ -84,12 +76,6 @@ export function PicksPage({ landing }: { landing?: boolean }) {
   );
 }
 type Game = WeekData["scoreboard"]["games"][number];
-const gameTime = new Intl.DateTimeFormat("en-US", {
-  timeZone: "America/Chicago",
-  hour: "numeric",
-  minute: "2-digit",
-  timeZoneName: "short",
-});
 
 function groupGamesByDay(games: Game[]) {
   const days = new Map<string, Game[]>();
@@ -333,7 +319,7 @@ function GamePick({
           dateTime={game.date}
           title={centralDate.format(new Date(game.date))}
         >
-          {gameTime.format(new Date(game.date))}
+          {centralTime.format(new Date(game.date))}
         </time>
         <span>
           {started
@@ -744,31 +730,8 @@ function SubmissionView({
           </button>
         </div>
       </div>
-      {compact && (
-        <div
-          className="submission-result-key"
-          role="group"
-          aria-label="Pick outcomes"
-        >
-          {pickOutcomeOptions.map((presentation) => (
-            <SubmissionOutcome
-              key={presentation.result}
-              presentation={presentation}
-              game={null}
-              compact={false}
-            />
-          ))}
-        </div>
-      )}
-      <ul className="panel submission-list">
-        {detail.picks.map((pick) => (
-          <SubmissionPick
-            key={pick.competitionId}
-            pick={pick}
-            compact={compact}
-          />
-        ))}
-      </ul>
+      {compact && <PickOutcomeKey />}
+      <SubmissionPickList picks={detail.picks} compact={compact} />
       <section className="panel submission-verification">
         <h2 className="mb-3 text-lg font-semibold">Submission verification</h2>
         <p className="muted mb-3">
@@ -808,156 +771,6 @@ function SubmissionView({
         )}
       </div>
     </div>
-  );
-}
-
-const pickPresentations = {
-  correct: {
-    result: "correct",
-    label: "Correct",
-    iconPath: "m6.5 10 2.5 2.5 4.5-5",
-  },
-  incorrect: {
-    result: "incorrect",
-    label: "Incorrect",
-    iconPath: "m7 7 6 6m0-6-6 6",
-  },
-  pending: {
-    result: "pending",
-    label: "Pending",
-    iconPath: "M10 6v4l2.5 1.5",
-  },
-} as const;
-const pickOutcomeOptions = Object.values(pickPresentations);
-
-function pickPresentation(pick: SubmissionDetail["picks"][number]) {
-  if (!pick.winningTeamId) {
-    return pickPresentations.pending;
-  }
-  return pick.correct ? pickPresentations.correct : pickPresentations.incorrect;
-}
-
-function SubmissionGameMeta({ game }: { game: Game }) {
-  const statusDetail =
-    game.status === "STATUS_SCHEDULED" ? "Scheduled" : game.statusDetail;
-  return (
-    <p className="submission-game-meta">
-      <time dateTime={game.date}>
-        {centralDate.format(new Date(game.date))}
-      </time>
-      <span>{statusDetail}</span>
-    </p>
-  );
-}
-
-function SubmissionOutcome({
-  presentation,
-  game,
-  compact,
-}: {
-  presentation: ReturnType<typeof pickPresentation>;
-  game: SubmissionDetail["picks"][number]["game"];
-  compact: boolean;
-}) {
-  return (
-    <div
-      className="submission-outcome"
-      title={
-        compact && game
-          ? `${presentation.label} · ${game.statusDetail}`
-          : presentation.label
-      }
-    >
-      <span className="submission-result" data-result={presentation.result}>
-        <svg
-          viewBox="0 0 20 20"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-        >
-          <circle cx="10" cy="10" r="7.5" />
-          <path d={presentation.iconPath} />
-        </svg>
-        <span className={compact ? "sr-only sm:not-sr-only" : undefined}>
-          {presentation.label}
-        </span>
-      </span>
-    </div>
-  );
-}
-
-function SubmissionPick({
-  pick,
-  compact,
-}: {
-  pick: SubmissionDetail["picks"][number];
-  compact: boolean;
-}) {
-  const game = pick.game;
-  const selected =
-    game &&
-    [game.awayTeam, game.homeTeam].find(
-      (team) => team.id === pick.selectedTeamId,
-    );
-  const presentation = pickPresentation(pick);
-  return (
-    <li className="submission-pick">
-      <div className="submission-pick-heading">
-        <div className={compact && game ? "sr-only" : undefined}>
-          <h2 className={game ? "sr-only" : "font-semibold"}>
-            {game?.name ?? `Game ${pick.competitionId}`}
-          </h2>
-          {game && <SubmissionGameMeta game={game} />}
-        </div>
-        <SubmissionOutcome
-          presentation={presentation}
-          game={game}
-          compact={compact}
-        />
-      </div>
-      {game && (
-        <div className="submission-matchup">
-          {[game.awayTeam, game.homeTeam].map((team, index) => {
-            const chosen = team.id === pick.selectedTeamId;
-            return (
-              <Fragment key={team.id}>
-                {compact && index === 1 && (
-                  <span
-                    className="muted submission-separator"
-                    aria-hidden="true"
-                  >
-                    {game.neutralSite ? "vs" : "@"}
-                  </span>
-                )}
-                <div className="submission-team" data-picked={chosen}>
-                  <TeamDisplay
-                    team={team}
-                    fullName={!compact}
-                    showScore={game.status !== "STATUS_SCHEDULED"}
-                  />
-                  <span className="submission-team-context">
-                    <span className={compact ? "sr-only" : undefined}>
-                      {index === 0 ? "Away" : "Home"}
-                    </span>
-                    {chosen && (
-                      <span className="submission-choice">Picked</span>
-                    )}
-                  </span>
-                </div>
-              </Fragment>
-            );
-          })}
-        </div>
-      )}
-      {!selected && (
-        <p className="submission-pick-fallback mt-2 text-sm font-medium">
-          Your pick: {pick.selectedTeamId}
-        </p>
-      )}
-    </li>
   );
 }
 
@@ -1019,24 +832,11 @@ function StandingsOverview({
   return (
     <>
       {mine ? (
-        <section
-          className="standings-overview"
-          aria-label="Your week at a glance"
-        >
-          <div className="stat-card">
-            <span className="stat-label">Your place</span>
-            <strong className="stat-value">#{mine.rank}</strong>
-            <span className="muted">of {data.standings.length} players</span>
-          </div>
-          <div className="stat-card">
-            <span className="stat-label">Correct</span>
-            <strong className="stat-value">{mine.correctPicks}</strong>
-          </div>
-          <div className="stat-card">
-            <span className="stat-label">Picks left</span>
-            <strong className="stat-value">{mine.remainingCount}</strong>
-          </div>
-        </section>
+        <PersonalStanding
+          standing={mine}
+          playerCount={data.standings.length}
+          hasResults={completed > 0}
+        />
       ) : (
         <p className="muted">You haven't submitted picks for this week.</p>
       )}

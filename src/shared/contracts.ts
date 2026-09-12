@@ -78,7 +78,7 @@ export interface PublicStanding {
   rank: number;
 }
 
-interface PickDetail {
+export interface PickDetail {
   competitionId: string;
   selectedTeamId: string;
   winningTeamId: string | null;
@@ -100,6 +100,33 @@ export interface WeekData {
   submission: Submission | null;
   locked: boolean;
   earliestGameTime: string | null;
+}
+
+export interface DashboardWeek extends WeekData {
+  picks: PickDetail[];
+  standing: PublicStanding | null;
+  playerCount: number;
+  action: {
+    kind: "make" | "review" | "locked" | "closed";
+    eligibleGames: number;
+    deadline: string | null;
+  };
+}
+
+export interface DashboardRecap extends SeasonWeek {
+  submissionId: number;
+  standing: PublicStanding;
+  playerCount: number;
+  complete: boolean;
+  hasResults: boolean;
+}
+
+export interface DashboardData {
+  season: number;
+  phase: "preseason" | "regular" | "postseason" | "offseason";
+  current: DashboardWeek | null;
+  previous: DashboardRecap | null;
+  checkedAt: string;
 }
 
 export interface StandingsData {

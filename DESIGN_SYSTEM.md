@@ -4,17 +4,19 @@ Corn Town is a quiet, editorial interface for **weekly picks**. Its personality
 comes from typography, proportion, warm surfaces, and precise feedback—not a
 football or sports visual theme.
 
-The shared treatment covers the application frame, picks, standings, submission
-history, and submission details. Administrator pages use the same typography,
-control sizing, option pickers, and spacing conventions.
+The shared treatment covers the application frame, Home, picks, standings,
+submission history, and submission details. Administrator pages use the same
+typography, control sizing, option pickers, and spacing conventions.
 
 ## Sources of truth
 
 - `src/client/styles.css`: color tokens, typography, components, responsive rules,
   and motion.
 - `src/client/ui.tsx`: headings, accessible option pickers, teams, themes, loading, and errors.
-- `src/client/app.tsx`: navigation, account disclosure, sign-in, and contextual home.
+- `src/client/app.tsx`: navigation, account disclosure, sign-in, and Home routing.
 - `src/client/picks.tsx`: pick entry, submission history/details, feedback, and standings.
+- `src/client/dashboard.tsx`: the personal weekly overview, grouping, and refresh lifecycle.
+- `src/client/submission-picks.tsx`: shared read-only matchups and pick outcomes.
 - `src/client/drafts.ts`: device-local draft lifecycle.
 
 Reuse these primitives. Use Tailwind utilities for layout and spacing; do not
@@ -96,15 +98,62 @@ remain valid choices; the primitive's internal value encoding is not an API chan
 - `.page-toolbar` aligns controls and actions along their bottom edge, with a
   minimum 16px gap and wrapping when needed. Inputs, option triggers, and buttons
   share a 44px height. Use 24px separation between major content sections.
-- There is one primary navigation instance: Make picks, Standings, My submissions.
+- There is one primary navigation instance: Home, Make picks, Standings, My submissions.
   It sits in the header at 768px and above and at the bottom on smaller screens.
+  Phones shorten the last visible label to Submissions; its accessible name remains
+  My submissions, and all four controls retain their touch-target size.
 - Bottom navigation and the submission dock account for device safe areas.
 - Account contains identity, appearance, sign-out, and authorized administrator links.
   Escape closes it and returns focus; leaving the disclosure also closes it.
-- An authenticated home visit opens unfinished picks or, after submission, the
-  selected week's standings. Explicit destinations and personalized links retain
-  their existing routing and authorization rules.
+- An authenticated home visit opens Your week, the current regular-season overview.
+  Home resolves the current period even when arriving from an archived week.
+  Explicit destinations and personalized links retain their routing and authorization;
+  submission links still open the pick form directly.
 - Ordinary navigation retains season/week context. The wordmark returns to home.
+
+## Home: your week
+
+Home is a personal weekly check-in, not a second leaderboard or full submission
+record. Keep its content full-width and flat: an action row, one personal summary
+strip, and divided matchup lists. Never put administrator tools or verification
+hashes in the main flow.
+
+- Before kickoff, prioritize submission status and the relevant Central-time deadline.
+  Distinguish not submitted, a draft saved on this device, submitted with local edits
+  not yet submitted, and locked picks. Continue actions reuse the draft lifecycle.
+  Late first submissions offer only eligible remaining games. Closed boards have
+  no make/edit action; a saved submission remains clearly identified as submitted.
+- Show the viewer's server-calculated place, correct picks, and picks remaining.
+  Suppress numeric place until there is a final game result. Remaining includes
+  upcoming and in-progress picks; a live lead is never counted as correct.
+  The whole scoreboard, not just the viewer's picks, determines whether the week
+  is final. Keep a direct link to full standings without copying other players' rows.
+- Show all live personal picks, the next scheduled kickoff group, and up to three
+  recent finals. Order deterministically by kickoff, not score; finals use newest
+  kickoff first, not an invented completion timestamp. Changed, postponed, unknown,
+  and missing game data remain visible in a separate status section rather than
+  being mislabeled live or disappearing.
+- Reuse Compact submission matchups, with kickoff and game status visibly available
+  on Home as well as the outcome tooltip. Keep one mobile outcome key above the groups.
+  A completed live pick moves into recent finals; the full personal record remains
+  accessible through View all your picks.
+- Keep the exact previous week's personal result as a small recap during the next
+  week, only when that season/week has a submission. Label unfinished recaps pending.
+  Week 1 does not invent week 0 or silently cross into the prior season. Outside the
+  regular season, show explicit season context instead of an active week; postseason
+  and offseason may retain the current season's Week 18 recap.
+- Refresh about once a minute during live games, every five minutes otherwise,
+  and at the next scheduled kickoff. Suspend polling while hidden and check again
+  on return. Preserve rows during refresh; do not animate scores or reset focus.
+  Last checked means a successful fetch, not an ESPN publication timestamp.
+  A failed refresh retains the last results with a visible stale-data warning;
+  authorization failures clear retained private data.
+
+The authenticated `/api/dashboard` endpoint resolves the current ESPN context
+and uses one scoreboard/submission snapshot per period for personal results,
+standing, and actions. Reuse scoring and public-standing projection; never expose
+competitors' private picks or hidden tiebreakers, or compute verification hashes
+just to render Home. Missing or invalid upstream game data remains an error.
 
 ## Picks
 

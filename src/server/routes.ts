@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import type { HonoRequest } from "hono";
 import { HTTPException } from "hono/http-exception";
-import type { Picks, PublicStanding } from "../shared/contracts";
+import type { Picks } from "../shared/contracts";
 import { validSeason, validWeek } from "../shared/season";
 import type { AppBindings } from "./env";
 import { readSession, requireAdmin, requireCsrf, requireUser } from "./auth";
@@ -14,12 +14,14 @@ import {
   listWeekSubmissions,
   saveSubmission,
 } from "./db";
+import { dashboard } from "./services/dashboard";
 import { EspnError, fetchScoreboard, getSeasonContext } from "./services/espn";
 import {
   calculateStandings,
   earliestGameTime,
   filterValidPicks,
   gamesStarted,
+  publicStanding,
   showTiebreaker,
   submissionDetail,
 } from "./services/scoring";
@@ -169,6 +171,10 @@ apiRoutes.get("/session", async (c) => {
 });
 apiRoutes.use("*", requireUser);
 
+apiRoutes.get("/dashboard", async (c) =>
+  c.json(await dashboard(c.env.DB, c.var.user.id)),
+);
+
 apiRoutes.get("/seasons", async (c) => {
   const [stored, current] = await Promise.all([
     listSeasons(c.env.DB),
@@ -292,16 +298,9 @@ apiRoutes.get("/standings", async (c) => {
   const submissions = await listWeekSubmissions(c.env.DB, scoreboard);
   const standings = calculateStandings(submissions, scoreboard);
   const displayTiebreaker = showTiebreaker(standings, scoreboard);
-  const publicStandings = standings.map((standing): PublicStanding => ({
-    user: { id: standing.user.id, username: standing.user.username },
-    correctPicks: standing.correctPicks,
-    remainingCount: Object.keys(standing.remainingPicks).length,
-    tiebreaker: displayTiebreaker ? standing.tiebreaker : null,
-    tiebreakerDiff: displayTiebreaker ? standing.tiebreakerDiff : null,
-    contender: standing.contender,
-    winner: standing.winner,
-    rank: standing.rank,
-  }));
+  const publicStandings = standings.map((standing) =>
+    publicStanding(standing, displayTiebreaker),
+  );
   return c.json({
     scoreboard,
     standings: publicStandings,

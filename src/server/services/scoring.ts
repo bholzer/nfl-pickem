@@ -1,5 +1,7 @@
 import type {
+  PickDetail,
   Picks,
+  PublicStanding,
   Scoreboard,
   Standing,
   SubmissionDetail,
@@ -171,25 +173,46 @@ export function showTiebreaker(
   );
 }
 
+export function publicStanding(
+  standing: Standing,
+  displayTiebreaker: boolean,
+): PublicStanding {
+  return {
+    user: { id: standing.user.id, username: standing.user.username },
+    correctPicks: standing.correctPicks,
+    remainingCount: Object.keys(standing.remainingPicks).length,
+    tiebreaker: displayTiebreaker ? standing.tiebreaker : null,
+    tiebreakerDiff: displayTiebreaker ? standing.tiebreakerDiff : null,
+    contender: standing.contender,
+    winner: standing.winner,
+    rank: standing.rank,
+  };
+}
+
+export function submissionPickDetails(
+  picks: Picks,
+  scoreboard: Scoreboard,
+): PickDetail[] {
+  const games = new Map(scoreboard.games.map((game) => [game.id, game]));
+  return Object.entries(picks).map(([competitionId, selectedTeamId]) => {
+    const game = games.get(competitionId) ?? null;
+    const winningTeamId =
+      game?.status === "STATUS_FINAL" ? game.winnerId : null;
+    return {
+      competitionId,
+      selectedTeamId,
+      winningTeamId,
+      correct: selectedTeamId === winningTeamId,
+      game,
+    };
+  });
+}
+
 export async function submissionDetail(
   submission: SubmissionWithUser,
   scoreboard: Scoreboard,
 ): Promise<SubmissionDetail> {
-  const games = new Map(scoreboard.games.map((game) => [game.id, game]));
-  const picks = Object.entries(submission.picks).map(
-    ([competitionId, selectedTeamId]) => {
-      const game = games.get(competitionId) ?? null;
-      const winningTeamId =
-        game?.status === "STATUS_FINAL" ? game.winnerId : null;
-      return {
-        competitionId,
-        selectedTeamId,
-        winningTeamId,
-        correct: selectedTeamId === winningTeamId,
-        game,
-      };
-    },
-  );
+  const picks = submissionPickDetails(submission.picks, scoreboard);
   return {
     submission,
     scoreboard,

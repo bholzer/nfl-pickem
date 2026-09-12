@@ -21,6 +21,7 @@ import {
 } from "./picks";
 import { JobDetailPage, JobsPage } from "./jobs";
 import { clearDraftsForUser, clearExpiredDrafts } from "./drafts";
+import { DashboardPage } from "./dashboard";
 
 function AccountMenu({ query }: { query: string }) {
   const session = useSession();
@@ -116,8 +117,13 @@ function AccountMenu({ query }: { query: string }) {
   );
 }
 
-function NavigationIcon({ kind }: { kind: "picks" | "standings" | "history" }) {
+function NavigationIcon({
+  kind,
+}: {
+  kind: "home" | "picks" | "standings" | "history";
+}) {
   const paths = {
+    home: "m3 10 9-7 9 7v11h-6v-7H9v7H3z",
     picks: "m5 12 4 4L19 6",
     standings: "M5 20V10m7 10V4m7 16v-7",
     history: "M6 3h12v18H6zM9 8h6m-6 4h6m-6 4h4",
@@ -163,11 +169,11 @@ function Layout() {
           {session.user ? <AccountMenu query={query} /> : <ThemePicker />}
           {session.user && (
             <nav aria-label="Main navigation" className="app-navigation">
-              <NavLink
-                className="nav-link"
-                end
-                to={`${location.pathname === "/" ? "/" : "/submissions/new"}${query}`}
-              >
+              <NavLink className="nav-link" end to="/">
+                <NavigationIcon kind="home" />
+                <span>Home</span>
+              </NavLink>
+              <NavLink className="nav-link" end to={`/submissions/new${query}`}>
                 <NavigationIcon kind="picks" />
                 <span>Make picks</span>
               </NavLink>
@@ -175,9 +181,15 @@ function Layout() {
                 <NavigationIcon kind="standings" />
                 <span>Standings</span>
               </NavLink>
-              <NavLink className="nav-link" end to={`/submissions${query}`}>
+              <NavLink
+                className="nav-link"
+                end
+                to={`/submissions${query}`}
+                aria-label="My submissions"
+              >
                 <NavigationIcon kind="history" />
-                <span>My submissions</span>
+                <span className="md:hidden">Submissions</span>
+                <span className="hidden md:inline">My submissions</span>
               </NavLink>
             </nav>
           )}
@@ -264,7 +276,7 @@ function Home() {
   ) {
     return <Navigate to={destination} replace />;
   }
-  return <PicksPage landing />;
+  return <DashboardPage />;
 }
 
 function SignIn() {
