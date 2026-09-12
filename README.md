@@ -205,10 +205,14 @@ values separately in each environment:
 | Secret | `SESSION_SECRET` | Environment-specific session signing key |
 | Secret | `SUBMISSION_TOKEN_SECRET` | Intended submission-link signing key |
 
-In **Actions → Deploy → Run workflow**, select `main` and the target environment,
-then run the workflow after reviewing the pending migrations.
-Deploy a reviewed revision whose CI has passed; this workflow does not rerun or
-automatically wait for the CI suite.
+Every push to `main` triggers a **staging** deployment, including pending D1
+migrations. Review migrations and coordinate breaking changes before pushing.
+
+Manual deployments remain available in **Actions → Deploy → Run workflow**:
+select `main` and either environment. **Production remains manual-only.**
+
+Deployment runs independently of CI; it does not rerun or wait for the CI suite.
+Use branch protection to require checks before changes reach `main`.
 
 The workflow caches npm downloads, installs locked dependencies, builds the
 selected environment, and then:
@@ -228,9 +232,8 @@ reconcile history, or change the durable delivery fence. Review configuration
 changes explicitly; there is no custom live-configuration drift validator.
 
 The four application secrets remain individual GitHub secrets. The workflow uses
-`jq` to serialize them into an owner-only temporary file for Wrangler, removes
-them from the child process environment, and deletes the file on exit. Secret
-values are not passed as command-line arguments.
+`jq` to serialize them into an owner-only temporary file for Wrangler and deletes
+the file on exit. Secret values are not passed as command-line arguments.
 
 Runs are serialized per environment and do not cancel an in-progress release.
 Do not run local cloud operations concurrently. First provisioning/publication,

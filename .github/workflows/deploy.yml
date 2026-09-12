@@ -1,6 +1,8 @@
 name: Deploy
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       environment:
@@ -14,7 +16,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: deploy-${{ inputs.environment }}
+  group: deploy-${{ inputs.environment || 'staging' }}
   cancel-in-progress: false
 
 jobs:
@@ -24,15 +26,15 @@ jobs:
       run:
         shell: bash
     environment:
-      name: ${{ inputs.environment }}
+      name: ${{ inputs.environment || 'staging' }}
       url: ${{ inputs.environment == 'production' && 'https://pickem.bholzer.me' || 'https://pickem-staging.bholzer.me' }}
     env:
       WRANGLER_SEND_METRICS: "false"
       WRANGLER_LOG_SANITIZE: "true"
       WRANGLER_WRITE_LOGS: "false"
-      DEPLOY_ENV: ${{ inputs.environment }}
+      DEPLOY_ENV: ${{ inputs.environment || 'staging' }}
     steps:
-      - name: Require main and cloud approval
+      - name: Require main
         run: |
           if [[ "$GITHUB_REF" != refs/heads/main ]]; then
             echo "::error::Deploy only a reviewed main-branch revision."

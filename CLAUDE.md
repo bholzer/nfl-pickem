@@ -118,6 +118,9 @@ Read `README.md` for native deployment and recovery procedures before any remote
 operation. Cloud changes and Discord activation require separate, explicit
 approvals. There is no custom deployment or Terraform wrapper.
 
+Pushes to `main` automatically trigger staging deployment. Production deployment
+remains manual.
+
 Routine releases use Wrangler version upload/deploy, leaving custom domains and
 Workflow schedules untouched. The operator coordinates breaking changes; there is
 no migration-specific deployment gate. First publication and configuration
