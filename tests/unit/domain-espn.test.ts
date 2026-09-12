@@ -188,6 +188,24 @@ const invalidBoards: Array<[string, () => unknown]> = [
       return espnScoreboard([event]);
     },
   ],
+  [
+    "non-boolean neutral-site flag",
+    () => {
+      const event = espnEvent();
+      return {
+        ...espnScoreboard(),
+        events: [
+          {
+            ...event,
+            competitions: event.competitions.map((competition) => ({
+              ...competition,
+              neutralSite: "true",
+            })),
+          },
+        ],
+      };
+    },
+  ],
 ];
 
 describe("invalid upstream boards never become editable empty weeks", () => {

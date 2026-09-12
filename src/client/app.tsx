@@ -20,82 +20,166 @@ import {
   SubmissionPage,
 } from "./picks";
 import { JobDetailPage, JobsPage } from "./jobs";
+import { clearDraftsForUser, clearExpiredDrafts } from "./drafts";
 
-function Layout() {
+function AccountMenu({ query }: { query: string }) {
   const session = useSession();
   const logout = useMutation();
   const navigate = useNavigate();
+  const location = useLocation();
+  const menu = useRef<HTMLDetailsElement>(null);
+  const trigger = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (menu.current) {
+      menu.current.open = false;
+    }
+  }, [location.pathname, location.search]);
+  useEffect(() => {
+    function closeOutside(event: Event) {
+      const details = menu.current;
+      if (!details?.open || !(event.target instanceof Node)) {
+        return;
+      }
+      if (details.contains(event.target)) {
+        return;
+      }
+      if (details.contains(document.activeElement)) {
+        trigger.current?.focus();
+      }
+      details.open = false;
+    }
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key !== "Escape" || !menu.current?.open) {
+        return;
+      }
+      event.preventDefault();
+      trigger.current?.focus();
+      menu.current.open = false;
+    }
+    document.addEventListener("pointerdown", closeOutside);
+    document.addEventListener("focusin", closeOutside);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOutside);
+      document.removeEventListener("focusin", closeOutside);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, []);
+  async function signOut() {
+    const user = session.user;
+    if (!user) {
+      return;
+    }
+    if ((await logout.mutate<undefined>("/logout", "DELETE"))?.ok) {
+      clearDraftsForUser(user.id);
+      session.expire();
+      await navigate("/sign_in", { replace: true });
+    }
+  }
+  const username = session.user?.username ?? "Pool member";
+  return (
+    <details className="account-menu" ref={menu}>
+      <summary className="account-trigger" ref={trigger}>
+        <span className="account-avatar" aria-hidden="true">
+          {username.slice(0, 1).toUpperCase()}
+        </span>
+        <span>Account</span>
+      </summary>
+      <div className="account-popover">
+        <div className="account-identity">
+          <strong>{username}</strong>
+          {session.user?.admin && <span className="badge">Admin</span>}
+        </div>
+        <ThemePicker />
+        {session.user?.admin && (
+          <nav className="account-links" aria-label="Administration">
+            <NavLink className="nav-link" to={`/admin/submissions${query}`}>
+              All submissions
+            </NavLink>
+            <NavLink className="nav-link" to={`/admin/jobs${query}`}>
+              Jobs
+            </NavLink>
+          </nav>
+        )}
+        <button
+          className="button secondary w-full"
+          disabled={logout.pending}
+          onClick={() => {
+            void signOut();
+          }}
+        >
+          Sign out
+        </button>
+        <ErrorNotice error={logout.error} />
+      </div>
+    </details>
+  );
+}
+
+function NavigationIcon({ kind }: { kind: "picks" | "standings" | "history" }) {
+  const paths = {
+    picks: "m5 12 4 4L19 6",
+    standings: "M5 20V10m7 10V4m7 16v-7",
+    history: "M6 3h12v18H6zM9 8h6m-6 4h6m-6 4h4",
+  };
+  return (
+    <svg
+      className="nav-icon"
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d={paths[kind]} />
+    </svg>
+  );
+}
+
+function Layout() {
+  const session = useSession();
   const location = useLocation();
   const main = useRef<HTMLElement>(null);
   useEffect(() => {
     main.current?.focus();
   }, [location.pathname, location.search]);
   const query = periodQuery(new URLSearchParams(location.search));
-  async function signOut() {
-    if ((await logout.mutate<undefined>("/logout", "DELETE"))?.ok) {
-      session.expire();
-      await navigate("/sign_in", { replace: true });
-    }
-  }
   return (
-    <>
+    <div className="app-shell">
       <a className="skip-link" href="#main-content">
         Skip to content
       </a>
-      <header className="border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-3 py-3 sm:px-4">
-          <Link to={`/${query}`} className="text-xl font-bold">
-            NFL Pick’em
+      <header className="app-header">
+        <div className="app-header-inner">
+          <Link to="/" className="app-brand">
+            <span className="brand-name">Corn Town</span>
+            <span className="brand-caption">Weekly picks</span>
           </Link>
-          <ThemePicker />
+          {session.user ? <AccountMenu query={query} /> : <ThemePicker />}
           {session.user && (
-            <>
-              <nav
-                aria-label="Main navigation"
-                className="flex w-full flex-wrap gap-1"
+            <nav aria-label="Main navigation" className="app-navigation">
+              <NavLink
+                className="nav-link"
+                end
+                to={`${location.pathname === "/" ? "/" : "/submissions/new"}${query}`}
               >
-                <NavLink className="nav-link" to={`/standings${query}`}>
-                  Standings
-                </NavLink>
-                <NavLink className="nav-link" to={`/submissions/new${query}`}>
-                  Make picks
-                </NavLink>
-                <NavLink className="nav-link" end to={`/submissions${query}`}>
-                  My submissions
-                </NavLink>
-                {session.user.admin && (
-                  <>
-                    <NavLink
-                      className="nav-link"
-                      to={`/admin/submissions${query}`}
-                    >
-                      All submissions
-                    </NavLink>
-                    <NavLink className="nav-link" to={`/admin/jobs${query}`}>
-                      Jobs
-                    </NavLink>
-                  </>
-                )}
-              </nav>
-              <div className="flex w-full items-center justify-between gap-3 text-sm">
-                <span>
-                  {session.user.username ?? "Pool member"}
-                  {session.user.admin && (
-                    <span className="badge ml-2">Admin</span>
-                  )}
-                </span>
-                <button
-                  className="button secondary"
-                  disabled={logout.pending}
-                  onClick={() => {
-                    void signOut();
-                  }}
-                >
-                  Sign out
-                </button>
-              </div>
-              <ErrorNotice error={logout.error} />
-            </>
+                <NavigationIcon kind="picks" />
+                <span>Make picks</span>
+              </NavLink>
+              <NavLink className="nav-link" to={`/standings${query}`}>
+                <NavigationIcon kind="standings" />
+                <span>Standings</span>
+              </NavLink>
+              <NavLink className="nav-link" end to={`/submissions${query}`}>
+                <NavigationIcon kind="history" />
+                <span>My submissions</span>
+              </NavLink>
+            </nav>
           )}
         </div>
       </header>
@@ -103,15 +187,22 @@ function Layout() {
         id="main-content"
         tabIndex={-1}
         ref={main}
-        className="mx-auto max-w-6xl px-3 py-5 outline-none sm:px-4 sm:py-7"
+        className="app-content outline-none"
       >
         <SessionContent />
       </main>
-    </>
+    </div>
   );
 }
 function SessionContent() {
   const session = useSession();
+  useEffect(() => {
+    clearExpiredDrafts();
+    const timer = window.setInterval(clearExpiredDrafts, 60_000);
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, []);
   if (session.loading) {
     return <p role="status">Checking your session…</p>;
   }
@@ -149,24 +240,46 @@ function Protected({ admin = false }: { admin?: boolean }) {
   }
   return <Outlet />;
 }
-function SignIn() {
-  const { user } = useSession();
-  const [params] = useSearchParams();
-  const requested =
-    params.get("return_to") ?? `/standings${periodQuery(params)}`;
-  const returnTo =
-    requested.startsWith("/") &&
+function signInDestination(params: URLSearchParams) {
+  const requested = params.get("return_to") ?? `/${periodQuery(params)}`;
+  return requested.startsWith("/") &&
     !requested.startsWith("//") &&
     !requested.includes("\\") &&
     !/^\/(sign_in|auth)(?:[/?]|$)/.test(requested)
-      ? requested
-      : "/standings";
+    ? requested
+    : "/";
+}
+
+function Home() {
+  const { user } = useSession();
+  const location = useLocation();
+  const [params] = useSearchParams();
+  if (!user) {
+    return <SignIn />;
+  }
+  const destination = signInDestination(params);
+  if (
+    params.has("return_to") &&
+    destination !== location.pathname + location.search
+  ) {
+    return <Navigate to={destination} replace />;
+  }
+  return <PicksPage landing />;
+}
+
+function SignIn() {
+  const { user } = useSession();
+  const [params] = useSearchParams();
+  const returnTo = signInDestination(params);
   if (user) {
     return <Navigate to={returnTo} replace />;
   }
   return (
-    <section className="panel mx-auto max-w-md space-y-5 sm:mt-12">
-      <h1 className="text-3xl font-bold">Corn Town NFL Pick’em</h1>
+    <section className="panel sign-in-panel space-y-6">
+      <div>
+        <p className="brand-caption">Weekly picks</p>
+        <h1 className="mt-3">Corn Town</h1>
+      </div>
       <p className="muted">
         Sign in to view standings and submit your picks. Use your pool’s Discord
         account or your personalized submission link.
@@ -190,7 +303,7 @@ export function App() {
     <SessionProvider>
       <Routes>
         <Route element={<Layout />}>
-          <Route index element={<SignIn />} />
+          <Route index element={<Home />} />
           <Route path="sign_in" element={<SignIn />} />
           <Route element={<Protected />}>
             <Route path="standings" element={<StandingsPage />} />

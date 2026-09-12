@@ -33,6 +33,36 @@ ESPN is replaced at the outbound transport boundary. Discord calls and all
 unrecognized outbound requests are blocked. Stop the process to remove its state.
 The developer server uses port 5173; the isolated rehearsal uses port 5180.
 
+## Corn Town interface
+
+The application presents itself as **Corn Town**, with **Weekly picks** as its
+supporting context. The approved editorial direction, shared tokens, responsive
+behavior, and accessibility rules are documented in [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md).
+Fonts are self-hosted; appearance follows the system or a saved light/dark preference.
+
+Picks and standings are the primary destinations. Home opens unfinished picks or
+the selected week's standings after submission, without changing explicit deep links.
+Account, theme, and administrator controls are grouped in the account menu.
+Season, week, theme, and job filters use styled keyboard-accessible option lists.
+Pick progress stays beside submit/update in the sticky dock. Saved submissions
+use borderless team rows and a neutral Picked label. Separate icon-and-text badges
+identify correct, incorrect, and pending outcomes without coloring the selection.
+The default Compact view uses single-line away @ home matchups (vs at neutral
+sites), with every separator at the panel's true center and Picked beside the
+chosen side. Phones use result icons with a visible key; wider screens retain
+logos and result words. Detailed restores full names and kickoff information.
+The browser remembers the display choice.
+
+Unsubmitted picks can recover from this device's local storage, scoped to the
+authenticated user, season, and week. A draft is **not a submission**: users must
+explicitly submit. Expired drafts and drafts based on an older saved submission
+are not restored; submission and sign-out clear the relevant drafts. If storage
+is unavailable, the form remains usable and reports that the draft was not saved.
+Closed browsers cannot perform background deletion of expired local data.
+
+The rehearsal above runs the same interface against isolated synthetic data.
+It does not contact Discord or use a staging/production database.
+
 ## Verification
 
 ```sh
@@ -143,6 +173,9 @@ from Cloudflare Workers. Both scoreboard and event metadata are checked against
 the requested period; postseason week numbers cannot become regular-season picks.
 Current-season discovery follows ESPN metadata, not the calendar year. Default
 views use Week 1 in preseason and Week 18 after the regular season.
+The competition's `neutralSite` flag selects `vs` instead of `@` in pick forms and
+compact submission details. Neutral-site games retain ESPN's nominal home/away
+assignments; picks and scoring do not change.
 
 `GET /api/seasons` lists the ESPN current season plus stored submission/job seasons.
 Week and standings reads accept `?season=YYYY`; omission selects the current season.

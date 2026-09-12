@@ -43,6 +43,7 @@ export interface Game {
   id: string;
   name: string;
   date: string;
+  neutralSite: boolean;
   status: string;
   statusDetail: string;
   homeTeam: Team;

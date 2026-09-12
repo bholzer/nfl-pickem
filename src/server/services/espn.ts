@@ -191,10 +191,17 @@ function normalizeGame(
     throw new EspnError("ESPN returned inconsistent completion status");
   }
   const teams = matchup(competition, statusName === "STATUS_FINAL");
+  if (
+    competition.neutralSite !== undefined &&
+    typeof competition.neutralSite !== "boolean"
+  ) {
+    throw new EspnError("ESPN returned an invalid neutral-site flag");
+  }
   return {
     id,
     name: text(event.name),
     date: new Date(date).toISOString(),
+    neutralSite: competition.neutralSite === true,
     status: statusName,
     statusDetail: text(status.detail),
     ...teams,

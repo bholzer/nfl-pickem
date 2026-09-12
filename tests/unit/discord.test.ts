@@ -54,6 +54,7 @@ const scoreboard: Scoreboard = {
     {
       id: "b",
       date: "2026-09-14T23:00:00Z",
+      neutralSite: false,
       name: "Bears at Packers",
       status: "STATUS_SCHEDULED",
       statusDetail: "Scheduled",
@@ -76,6 +77,7 @@ const scoreboard: Scoreboard = {
     {
       id: "a",
       date: "2026-09-13T17:00:00Z",
+      neutralSite: false,
       name: "Chiefs at Bills",
       status: "STATUS_SCHEDULED",
       statusDetail: "Scheduled",

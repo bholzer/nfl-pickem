@@ -53,12 +53,6 @@ test("signed link saves real picks, history and public standings across deep lin
   await expect(
     page.getByRole("heading", { name: "Your picks", exact: true }),
   ).toBeVisible();
-  await expect(
-    page.getByText("Your pick: Synthetic Bears 1", { exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByText("Your pick: Synthetic Bears 2", { exact: true }),
-  ).toBeVisible();
   await expect(page.locator("code")).toHaveText(/^[a-f0-9]{64}$/);
   const stored = await rehearsal.db
     .prepare(
@@ -104,10 +98,10 @@ test("signed link saves real picks, history and public standings across deep lin
     }),
   ).toBeVisible();
   await expect(
-    page.getByRole("rowheader", { name: "Rehearsal Player", exact: true }),
+    page.getByRole("rowheader", { name: /^Rehearsal Player\b/ }),
   ).toBeVisible();
   await expect(
-    page.getByRole("rowheader", { name: "Rehearsal Rival", exact: true }),
+    page.getByRole("rowheader", { name: /^Rehearsal Rival\b/ }),
   ).toBeVisible();
   const standingsResponse = await page.request.get(
     `/api/standings?season=${rehearsal.season}&week=2`,
@@ -140,10 +134,24 @@ test("signed link saves real picks, history and public standings across deep lin
     }
     expect(Object.keys(row.user).sort()).toEqual(["id", "username"]);
   }
-  await page
-    .getByRole("combobox", { name: "Theme", exact: true })
-    .selectOption("dark");
+  await page.locator("summary", { hasText: "Account" }).click();
+  await page.getByRole("combobox", { name: "Theme", exact: true }).click();
+  await expect(
+    page.getByRole("option", { name: "Dark", exact: true }),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("option")).toHaveCount(0);
+  await expect(
+    page.getByRole("combobox", { name: "Theme", exact: true }),
+  ).toBeFocused();
+  await page.getByRole("combobox", { name: "Theme", exact: true }).click();
+  await page.getByRole("option", { name: "Dark", exact: true }).click();
   await expect(page.locator("html")).toHaveClass(/dark/);
+  await page.keyboard.press("Escape");
+  await expect(
+    page.getByRole("combobox", { name: "Theme", exact: true }),
+  ).toBeHidden();
+  await expect(page.locator("summary", { hasText: "Account" })).toBeFocused();
   await page.reload();
   await expect(
     page.getByRole("table", {
@@ -161,10 +169,15 @@ test("signed link saves real picks, history and public standings across deep lin
     path: testInfo.outputPath("standings-dark.png"),
     fullPage: true,
   });
-  await page
-    .getByRole("combobox", { name: "Theme", exact: true })
-    .selectOption("light");
+  await page.locator("summary", { hasText: "Account" }).click();
+  await page.getByRole("combobox", { name: "Theme", exact: true }).click();
+  await page.getByRole("option", { name: "Light", exact: true }).click();
   await expect(page.locator("html")).not.toHaveClass(/dark/);
+  await page.keyboard.press("Escape");
+  await expect(
+    page.getByRole("combobox", { name: "Theme", exact: true }),
+  ).toBeHidden();
+  await expect(page.locator("summary", { hasText: "Account" })).toBeFocused();
   await page.screenshot({
     path: testInfo.outputPath("standings-light.png"),
     fullPage: true,
@@ -208,10 +221,11 @@ test("historical IDs and same-week season switching keep archived picks and stan
   await page.getByRole("link", { name: "Edit picks", exact: true }).click();
   await expect(
     page.getByRole("combobox", { name: "Season", exact: true }),
-  ).toHaveValue(String(rehearsal.historicalSeason));
-  await expect(
-    page.getByRole("button", { name: "Update picks", exact: true }),
-  ).toBeDisabled();
+  ).toHaveText(`${rehearsal.historicalSeason} season`);
+  await expect(page.getByRole("radio").first()).toBeDisabled();
+  for (const choice of await page.getByRole("radio").all()) {
+    await expect(choice).toBeDisabled();
+  }
   await page.getByRole("link", { name: "Standings", exact: true }).click();
   await expect(
     page.getByRole("table", {
@@ -220,11 +234,12 @@ test("historical IDs and same-week season switching keep archived picks and stan
     }),
   ).toBeVisible();
   await expect(
-    page.getByRole("rowheader", { name: "Rehearsal Rival", exact: true }),
+    page.getByRole("rowheader", { name: /^Rehearsal Rival\b/ }),
   ).toBeVisible();
+  await page.getByRole("combobox", { name: "Season", exact: true }).click();
   await page
-    .getByRole("combobox", { name: "Season", exact: true })
-    .selectOption(String(rehearsal.season));
+    .getByRole("option", { name: `${rehearsal.season} season`, exact: true })
+    .click();
   await expect(
     page.getByRole("table", {
       name: `${rehearsal.season} season, Week 1 standings`,
@@ -232,7 +247,7 @@ test("historical IDs and same-week season switching keep archived picks and stan
     }),
   ).toBeVisible();
   await expect(
-    page.getByRole("rowheader", { name: "Rehearsal Rival", exact: true }),
+    page.getByRole("rowheader", { name: /^Rehearsal Rival\b/ }),
   ).toHaveCount(0);
   await page.getByRole("link", { name: "Make picks", exact: true }).click();
   await expect(
@@ -240,10 +255,9 @@ test("historical IDs and same-week season switching keep archived picks and stan
   ).toBeVisible();
   await expect(
     page.getByRole("combobox", { name: "Season", exact: true }),
-  ).toHaveValue(String(rehearsal.season));
-  await page
-    .getByRole("combobox", { name: "Week", exact: true })
-    .selectOption("2");
+  ).toHaveText(`${rehearsal.season} season`);
+  await page.getByRole("combobox", { name: "Week", exact: true }).click();
+  await page.getByRole("option", { name: "Week 2", exact: true }).click();
   await expect(
     page.getByLabel("Monday night tiebreaker", { exact: true }),
   ).toBeEnabled();
@@ -293,6 +307,7 @@ test("ordinary users cannot access administrator pages or APIs and logout reache
       new URL(response.url()).pathname === "/logout" &&
       response.request().method() === "DELETE",
   );
+  await page.locator("summary", { hasText: "Account" }).click();
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
   const response = await logout;
   expect(response.status()).toBe(200);
@@ -339,12 +354,14 @@ test("administrator creates native Workflow work but delivery policy prevents ev
   await expect(
     page.getByRole("heading", { name: "Job management", exact: true }),
   ).toBeVisible();
+  await page.getByRole("combobox", { name: "Job type", exact: true }).click();
   await page
-    .getByRole("combobox", { name: "Job type", exact: true })
-    .selectOption("deliver_hashes");
+    .getByRole("option", { name: "Deliver hashes", exact: true })
+    .click();
+  await page.getByRole("combobox", { name: "Job season", exact: true }).click();
   await page
-    .getByRole("combobox", { name: "Job season", exact: true })
-    .selectOption(String(rehearsal.season));
+    .getByRole("option", { name: `${rehearsal.season} season`, exact: true })
+    .click();
   await page.getByLabel("Job week", { exact: true }).fill("2");
   const created = page.waitForResponse(
     (response) =>

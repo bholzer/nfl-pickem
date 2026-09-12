@@ -8,6 +8,7 @@ export interface EspnGameOptions {
   id?: string;
   name?: string;
   date?: string;
+  neutralSite?: boolean;
   status?: string;
   homeId?: string;
   awayId?: string;
@@ -82,6 +83,7 @@ export function espnEvent(options: EspnGameOptions = {}) {
     competitions: [
       {
         id,
+        neutralSite: options.neutralSite ?? false,
         status: { type: { ...type } },
         competitors: [
           fixtureCompetitor(options, scores, "home", id),

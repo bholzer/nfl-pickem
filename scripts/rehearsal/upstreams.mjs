@@ -71,6 +71,7 @@ function game(season, week, slot, date, completed) {
     competitions: [
       {
         id: `rehearsal-${season}-${week}-${slot}`,
+        neutralSite: slot === 2,
         status: { type },
         competitors: [away, home],
       },

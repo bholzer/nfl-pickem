@@ -16,6 +16,7 @@ import { RequestError, useMutation, useResource } from "./api";
 import {
   centralDate,
   ErrorNotice,
+  OptionPicker,
   PageHeading,
   periodQuery,
   ResourceView,
@@ -28,6 +29,14 @@ const JOB_LABELS: Record<JobType, string> = {
   deliver_hashes: "Deliver hashes",
   schedule_hash_delivery: "Schedule hash delivery",
 };
+const JOB_OPTIONS = JOB_TYPES.map((value) => ({
+  value,
+  label: JOB_LABELS[value],
+}));
+const JOB_FILTER_OPTIONS = [
+  { value: "", label: "All job types" },
+  ...JOB_OPTIONS,
+];
 const ACTION_LABELS = {
   retry: "Retry",
   pause: "Pause",
@@ -358,53 +367,44 @@ function EnqueueJobForm({
       <form
         onSubmit={(event) => {
           event.preventDefault();
-          if (season) {
+          if (season && seasons.data?.seasons.includes(Number(season))) {
             onEnqueue(type, Number(season), week);
           }
         }}
-        className="flex flex-wrap items-end gap-3"
+        className="page-toolbar"
       >
-        <label className="flex min-w-0 flex-1 flex-col gap-1">
-          Job type
-          <select
-            className="input"
+        <div className="period-select job-type-field">
+          <span>Job type</span>
+          <OptionPicker
+            label="Job type"
             value={type}
-            onChange={(event) => {
-              const selectedType = JOB_TYPES.find(
-                (value) => value === event.target.value,
-              );
+            options={JOB_OPTIONS}
+            onChange={(value) => {
+              const selectedType = JOB_TYPES.find((type) => type === value);
               if (selectedType) {
                 setType(selectedType);
               }
             }}
-          >
-            {JOB_TYPES.map((value) => (
-              <option key={value} value={value}>
-                {JOB_LABELS[value]}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1">
-          Job season
-          <select
-            className="input w-auto"
-            required
+          />
+        </div>
+        <div className="period-select">
+          <span>Job season</span>
+          <OptionPicker
+            label="Job season"
             value={season}
             disabled={seasons.loading}
-            onChange={(event) => {
-              setSeason(event.target.value);
-            }}
-          >
-            {!seasons.data && <option value="">Loading seasons…</option>}
-            {seasons.data?.seasons.map((year) => (
-              <option key={year} value={year}>
-                {year} season
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1">
+            options={
+              seasons.data
+                ? seasons.data.seasons.map((year) => ({
+                    value: String(year),
+                    label: `${year} season`,
+                  }))
+                : [{ value: "", label: "Loading seasons…" }]
+            }
+            onChange={setSeason}
+          />
+        </div>
+        <label className="period-select">
           Job week
           <input
             className="input w-32"
@@ -449,51 +449,45 @@ function JobFilters({
 }) {
   const seasons = useResource<SeasonsData>("/api/seasons");
   return (
-    <div className="mb-4 flex flex-wrap items-end gap-3">
-      <label className="flex flex-col gap-1">
-        Filter season
-        <select
-          className="input w-auto"
+    <div className="page-toolbar mb-4">
+      <div className="period-select">
+        <span>Filter season</span>
+        <OptionPicker
+          label="Filter season"
           value={params.get("season") ?? ""}
-          onChange={(event) => {
-            onFilter("season", event.target.value);
+          options={[
+            { value: "", label: "All seasons" },
+            ...(seasons.data?.seasons.map((year) => ({
+              value: String(year),
+              label: `${year} season`,
+            })) ?? []),
+          ]}
+          onChange={(value) => {
+            onFilter("season", value);
           }}
-        >
-          <option value="">All seasons</option>
-          {seasons.data?.seasons.map((year) => (
-            <option key={year} value={year}>
-              {year} season
-            </option>
-          ))}
-        </select>
-      </label>
+        />
+      </div>
       <ErrorNotice error={seasons.error} retry={seasons.reload} />
-      <label className="flex flex-col gap-1">
-        Filter job type
-        <select
-          className="input"
+      <div className="period-select">
+        <span>Filter job type</span>
+        <OptionPicker
+          label="Filter job type"
           value={params.get("type") ?? ""}
-          onChange={(event) => {
-            onFilter("type", event.target.value);
+          options={JOB_FILTER_OPTIONS}
+          onChange={(value) => {
+            onFilter("type", value);
           }}
-        >
-          <option value="">All job types</option>
-          {JOB_TYPES.map((value) => (
-            <option key={value} value={value}>
-              {JOB_LABELS[value]}
-            </option>
-          ))}
-        </select>
-      </label>
+        />
+      </div>
       <form
-        className="flex flex-wrap items-end gap-3"
+        className="page-toolbar"
         onSubmit={(event) => {
           event.preventDefault();
           const status = new FormData(event.currentTarget).get("status");
           onFilter("status", typeof status === "string" ? status.trim() : "");
         }}
       >
-        <label className="flex flex-col gap-1">
+        <label className="period-select">
           Filter status
           <input
             key={params.get("status")}

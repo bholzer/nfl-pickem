@@ -41,6 +41,7 @@ const game = {
   id: "game1",
   name: "Bears at Packers",
   date: "2099-09-14T20:00:00Z",
+  neutralSite: false,
   status: "STATUS_SCHEDULED",
   statusDetail: "Scheduled",
   awayTeam: {
@@ -217,6 +218,7 @@ describe("authentication and navigation", () => {
       ),
     );
     mount("/submissions");
+    await userEvent.click(await screen.findByText("Account"));
     await userEvent.click(
       await screen.findByRole("button", { name: "Sign out" }),
     );
@@ -244,8 +246,12 @@ describe("authentication and navigation", () => {
         name: "Chicago Bears for Bears at Packers",
       }),
     ).toBeChecked();
-    expect(screen.getByLabelText("Week")).toHaveValue("4");
-    expect(screen.getByLabelText("Season")).toHaveValue("2026");
+    expect(screen.getByRole("combobox", { name: "Week" })).toHaveTextContent(
+      "Week 4",
+    );
+    expect(screen.getByRole("combobox", { name: "Season" })).toHaveTextContent(
+      "2026 season",
+    );
   });
   it("keeps a missing or inaccessible detail as a not-found error instead of opening another week's picks", async () => {
     network.use(
@@ -288,19 +294,25 @@ describe("authentication and navigation", () => {
       }),
     );
     mount("/standings?season=2025&week=4");
-    await userEvent.selectOptions(
-      await screen.findByLabelText("Season"),
-      "2026",
+    await userEvent.click(
+      await screen.findByRole("combobox", { name: "Season" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("option", { name: "2026 season" }),
     );
     expect(
-      await screen.findByRole("rowheader", { name: "Player season 2026" }),
+      await screen.findByRole("rowheader", { name: /^Player season 2026\b/ }),
     ).toBeVisible();
     await act(() => delay(160));
     expect(
-      screen.queryByRole("rowheader", { name: "Player season 2025" }),
+      screen.queryByRole("rowheader", { name: /^Player season 2025\b/ }),
     ).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Season")).toHaveValue("2026");
-    expect(screen.getByLabelText("Week")).toHaveValue("4");
+    expect(screen.getByRole("combobox", { name: "Season" })).toHaveTextContent(
+      "2026 season",
+    );
+    expect(screen.getByRole("combobox", { name: "Week" })).toHaveTextContent(
+      "Week 4",
+    );
   });
 });
 
@@ -343,6 +355,9 @@ describe("picks and standings", () => {
       await screen.findByRole("button", { name: "Submit picks" }),
     );
     expect(screen.getByRole("alert")).toBeVisible();
+    expect(
+      screen.getByRole("radio", { name: "Chicago Bears for Bears at Packers" }),
+    ).toHaveFocus();
     await userEvent.click(
       screen.getByRole("radio", {
         name: "Green Bay Packers for Bears at Packers",
@@ -356,7 +371,6 @@ describe("picks and standings", () => {
     expect(
       await screen.findByRole("heading", { name: "Your picks" }),
     ).toBeVisible();
-    expect(screen.getByText("Your pick: Green Bay Packers")).toBeVisible();
     expect(screen.getByText("37", { selector: "dd" })).toBeVisible();
   });
   it("resets same-week picks across seasons and saves only to the selected season", async () => {
@@ -404,9 +418,11 @@ describe("picks and standings", () => {
       }),
     ).toBeChecked();
     expect(screen.getByLabelText("Monday night tiebreaker")).toHaveValue(11);
-    await userEvent.selectOptions(
-      await screen.findByLabelText("Season"),
-      "2026",
+    await userEvent.click(
+      await screen.findByRole("combobox", { name: "Season" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("option", { name: "2026 season" }),
     );
     expect(
       await screen.findByRole("button", { name: "Submit picks" }),
@@ -471,7 +487,12 @@ describe("picks and standings", () => {
     status = 409;
     await userEvent.click(screen.getByRole("button", { name: "Submit picks" }));
     expect(await screen.findByText("Games have started")).toBeVisible();
-    expect(screen.getByRole("button", { name: "Submit picks" })).toBeDisabled();
+    expect(
+      screen.queryByRole("button", { name: "Submit picks" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("radio", { name: "Chicago Bears for Bears at Packers" }),
+    ).toBeDisabled();
     expect(screen.getByLabelText("Monday night tiebreaker")).toBeDisabled();
   });
   it("allows late initial picks only for remaining games but locks existing submissions", async () => {
@@ -511,7 +532,9 @@ describe("picks and standings", () => {
         name: "Chicago Bears for Bears at Packers",
       }),
     ).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Update picks" })).toBeDisabled();
+    expect(
+      screen.queryByRole("button", { name: "Update picks" }),
+    ).not.toBeInTheDocument();
   });
   it("displays server ranks, winner and nullable tiebreaker differences without fabricating zero", async () => {
     network.use(
@@ -558,19 +581,23 @@ describe("picks and standings", () => {
 
 it("follows system theme until explicitly overridden and can return to system", async () => {
   mount("/sign_in", { user: null, csrfToken: null });
-  const theme = screen.getByLabelText("Theme");
+  const theme = screen.getByRole("combobox", { name: "Theme" });
   act(() => {
     media.matches = true;
     media.dispatchEvent(new Event("change"));
   });
   expect(document.documentElement).toHaveClass("dark");
-  await userEvent.selectOptions(theme, "light");
+  await userEvent.click(theme);
+  await userEvent.click(await screen.findByRole("option", { name: "Light" }));
   expect(localStorage.getItem("theme")).toBe("light");
   act(() => {
     media.dispatchEvent(new Event("change"));
   });
   expect(document.documentElement).not.toHaveClass("dark");
-  await userEvent.selectOptions(theme, "auto");
+  await userEvent.click(theme);
+  await userEvent.click(
+    await screen.findByRole("option", { name: "System theme" }),
+  );
   expect(document.documentElement).toHaveClass("dark");
 });
 
@@ -635,11 +662,16 @@ describe("job operations", () => {
       ),
     );
     mount("/admin/jobs", { ...session, user: { ...user, admin: true } });
-    await userEvent.selectOptions(
-      await screen.findByLabelText("Job type"),
-      "deliver_standings",
+    await userEvent.click(
+      await screen.findByRole("combobox", { name: "Job type" }),
     );
-    await userEvent.selectOptions(screen.getByLabelText("Job season"), "2025");
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Deliver standings" }),
+    );
+    await userEvent.click(screen.getByRole("combobox", { name: "Job season" }));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "2025 season" }),
+    );
     await userEvent.type(screen.getByLabelText("Job week"), "7");
     await userEvent.click(screen.getByRole("button", { name: "Enqueue job" }));
     expect(await screen.findByRole("link", { name: /run-new/ })).toBeVisible();
@@ -832,9 +864,11 @@ describe("job operations", () => {
     expect(
       await screen.findByRole("link", { name: /older-run/ }),
     ).toBeVisible();
-    await userEvent.selectOptions(
-      screen.getByLabelText("Filter season"),
-      "2025",
+    await userEvent.click(
+      screen.getByRole("combobox", { name: "Filter season" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("option", { name: "2025 season" }),
     );
     expect(
       await screen.findByRole("link", { name: /filtered-run/ }),
