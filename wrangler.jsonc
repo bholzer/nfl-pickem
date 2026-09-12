@@ -129,7 +129,13 @@
       "account_id": "b1c51a7ba7a34094b8aa6c8b348e929f",
       "workers_dev": false,
       "preview_urls": false,
-      "routes": [],
+      "routes": [
+        {
+          "pattern": "pickem.bholzer.me",
+          "custom_domain": true,
+          "zone_id": "edfc5bace78326d69aedc239f8e3fa91",
+        },
+      ],
       "vars": {
         "APP_ENV": "production",
         "APP_ORIGIN": "https://pickem.bholzer.me",
@@ -146,6 +152,7 @@
           "binding": "DB",
           "database_name": "nfl-pickem-production",
           "migrations_dir": "migrations",
+          "database_id": "1254ba0e-aba0-490e-bf62-51d1cf312bc3",
         },
       ],
       "workflows": [
