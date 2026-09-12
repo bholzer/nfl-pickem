@@ -58,7 +58,7 @@ temporary state. Screenshots and failure traces go under `tmp/playwright`.
   types explicitly where modules cross that boundary. Keep indexed-access checks.
 - The documented exceptions cover disposal-owning `using` declarations,
   Playwright fixture dependency patterns, numeric template interpolation,
-  Workerd module names, and the external Terraform CLI.
+  and Workerd module names.
 - Knip findings require reference/framework review before deletion. The metrics
   reporter uses official rule scores and writes `tmp/quality/metrics.json`;
   compare like populations rather than diluting application scores with tests.
@@ -81,8 +81,8 @@ temporary state. Screenshots and failure traces go under `tmp/playwright`.
 - `src/shared/contracts.ts` and `season.ts`: client/server contracts and season
   validation/date rules, also shared with checked Node tooling.
 - `migrations/`: native D1 SQL schema migrations.
-- `scripts/cloudflare.mjs` and `infrastructure.mjs`: guarded deployment lifecycle
-  and Terraform integration.
+- `.github/workflows/deploy.yml`: direct Wrangler migrations and version releases.
+- `infrastructure/cloudflare/main.tf`: native Terraform D1 and Worker identity.
 - `tests/`: domain/client/native Worker tests, compatibility fixtures, and
   browser scenarios. Cached reference fixtures do not require another runtime.
 
@@ -114,10 +114,15 @@ temporary state. Screenshots and failure traces go under `tmp/playwright`.
 
 ## Deployment and private data
 
-Read `README.md` for the complete guarded lifecycle before any remote operation.
-`node scripts/cloudflare.mjs --help` lists the current command contract;
-`plan` is offline. Cloud changes and Discord activation require separate,
-explicit approvals.
+Read `README.md` for native deployment and recovery procedures before any remote
+operation. Cloud changes and Discord activation require separate, explicit
+approvals. There is no custom deployment or Terraform wrapper.
+
+Routine releases use Wrangler version upload/deploy, leaving custom domains and
+Workflow schedules untouched. The operator coordinates breaking changes; there is
+no migration-specific deployment gate. First publication and configuration
+changes use separately approved native commands. Wrangler strict
+mode does not prevent noninteractive custom-domain takeover.
 
 Terraform owns D1 and Worker identity; Wrangler owns deployments, assets,
 bindings, native Workflow definitions/schedules, and approved custom domains.
@@ -128,10 +133,11 @@ Keep native secret bundles outside the repository, owner-only. Do not print
 tokens, secret values, or database snapshots. Preserve `.dev.vars`, local D1
 state, private credentials, and uncommitted user work.
 
-Use `maintenance` to fence delivery, disable schedules/sends, pause Workflows,
-and retain routes for a current export. `--source-quiesced` acknowledges frozen
-source writers and dispatchers. Recovery requires verified data and a deliberate
-native publication/activation; individually paused Workflows do not auto-resume.
+Use application global Pause to fence delivery before maintenance. Disable
+schedules/sends, publish maintenance mode, stop native work, and freeze source
+writers/dispatchers before exporting. Retain routes and verify a current private
+snapshot. Recovery requires deliberate native publication and application global
+Unpause for waiter wakeups; individually paused Workflows do not auto-resume.
 Migration `0003_seasons.sql` requires old native instances to be retired, not just
 paused, and rejects nonterminal D1 history. Never resume pre-cutover native code;
 recover reviewed work through new season-pinned retry children retaining delivery

@@ -1,0 +1,84 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Deployment environment
+        type: choice
+        options: [staging, production]
+        default: staging
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    environment:
+      name: ${{ inputs.environment }}
+      url: ${{ inputs.environment == 'production' && 'https://pickem.bholzer.me' || 'https://pickem-staging.bholzer.me' }}
+    env:
+      WRANGLER_SEND_METRICS: "false"
+      WRANGLER_LOG_SANITIZE: "true"
+      WRANGLER_WRITE_LOGS: "false"
+      DEPLOY_ENV: ${{ inputs.environment }}
+    steps:
+      - name: Require main and cloud approval
+        run: |
+          if [[ "$GITHUB_REF" != refs/heads/main ]]; then
+            echo "::error::Deploy only a reviewed main-branch revision."
+            exit 1
+          fi
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.22.2"
+          cache: npm
+      - name: Pin npm
+        run: npm install --global npm@10.9.7
+      - name: Install locked Node dependencies
+        run: npm ci
+      - name: Build selected environment
+        run: npm run "build:$DEPLOY_ENV"
+      - name: Apply migrations and deploy with Wrangler
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          DISCORD_CLIENT_SECRET: ${{ secrets.DISCORD_CLIENT_SECRET }}
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+          SUBMISSION_TOKEN_SECRET: ${{ secrets.SUBMISSION_TOKEN_SECRET }}
+        run: |
+          jq -e --arg environment "$DEPLOY_ENV" --arg account "$CLOUDFLARE_ACCOUNT_ID" \
+            '.targetEnvironment == $environment and .account_id == $account' \
+            dist/server/wrangler.json > /dev/null
+
+          umask 077
+          secrets_file=$(mktemp "$RUNNER_TEMP/pickem-secrets.XXXXXX.json")
+          trap 'rm -f -- "$secrets_file"' EXIT
+          jq -en 'env | {
+            DISCORD_CLIENT_SECRET, DISCORD_BOT_TOKEN,
+            SESSION_SECRET, SUBMISSION_TOKEN_SECRET
+          } | if all(.[]; type == "string" and length > 0) then .
+              else error("Set all four application secrets") end' > "$secrets_file"
+
+          npm run db:migrate:remote -- --env "$DEPLOY_ENV"
+          tag="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          npm run deploy:upload -- --secrets-file "$secrets_file" --tag "$tag"
+          npm run deploy -- --version-tag "$tag@100"
+      - name: Check deployed application health
+        run: |
+          curl --fail --silent --show-error --max-time 30 \
+            "$(jq -r '.vars.APP_ORIGIN' dist/server/wrangler.json)/up" \
+            | jq -e '.status == "ok"'

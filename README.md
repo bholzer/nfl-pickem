@@ -85,7 +85,8 @@ mobile/dark-mode projects save screenshots under `tmp/playwright`; failure trace
 stay local.
 CI enforces formatting, strict types/lint, complexity limits, and the dead-code
 audit before Node tests. Native Worker, build/packaging, and Chromium jobs remain
-separate. Readability reports are retained as CI artifacts; CI does not deploy.
+separate. Readability reports are retained as CI artifacts. CI does not deploy;
+the separate [Deploy workflow](#github-actions-deployment) is manually dispatched.
 
 ## Code quality
 
@@ -112,9 +113,9 @@ The narrow rule exceptions are intentional: unread `using` declarations still
 own disposal, Playwright's fixture file requires empty dependency destructuring,
 and numeric template interpolation expresses counts and IDs. Knip checks entry
 exports, follows CSS imports, and recognizes framework configuration. Its only
-external-tool exceptions are Workerd's `cloudflare:*` module namespace and the
-installed Terraform executable. Review findings before deleting code; do not
-remove native Workflow exports or pinned test-runtime peers.
+dependency exception is Workerd's `cloudflare:*` module namespace. Review findings
+before deleting code; do not remove native Workflow exports or pinned test-runtime
+peers.
 
 `npm run metrics` writes `tmp/quality/metrics.json` using the official ESLint and
 SonarJS rules, with separate application, operations, quality-tool, and test
@@ -134,10 +135,9 @@ The 2026-09-11 cleanup compared the formatting-only baseline with the refactor:
 | Longest function, excluding blanks/comments | 435 → 158 | 298 → 89 |
 | Functions over 80 lines | 18 → 8 | 4 → 1 |
 
-Reviewed length outliers retain cohesive JSX, the shared job mutation/selection
-hook, and visible Workflow/maintenance sequencing. Five-argument database and
-deployment boundaries remain explicit rather than introducing opaque context
-objects solely for a score. Long test narratives remain intact.
+Those measurements predate removal of the custom deployment tooling. Remaining
+long UI and durable-orchestration functions retain cohesive JSX and explicit
+sequencing rather than fragmenting behavior solely for a score.
 
 ## Application contracts
 
@@ -183,277 +183,315 @@ Saving `PUT /api/submissions/:week?season=YYYY` requires the season explicitly.
 Job enqueue requests and private Workflow plans require `season`; a null week
 resolves only within that pinned season's current regular-season period.
 
-## Data import and snapshots
+## Cloud deployment
 
-Use owner-only directories outside source control for SQL snapshots and Workflow
-plans. Freeze source writers and dispatchers, drain in-flight work, and keep the
-original snapshots intact. `--source-quiesced` acknowledges that the source
-system cannot accept writes or dispatch work during the operation.
+Deployment uses native Wrangler commands, not a project deployment script.
+Terraform owns D1 and Worker identity; Wrangler owns application versions, assets,
+bindings, native Workflow configuration, and approved custom domains.
+Cloud changes and Discord activation require separate, explicit approvals.
 
-Use the guarded `import` command only for an approved SQL data migration into a
-fresh, offline D1 target with the native `migrations/` applied. Do not assume an
-entire Wrangler SQL import is atomic. On partial failure, keep the target offline
-and resolve its state; do not blindly retry or merge into it.
+### GitHub Actions deployment
 
-Verify an actual target export, not just an input manifest, before enabling
-deliveries. Preserve job history, delivery outcomes, and suppression expiry when
-preparing a Workflow plan. The guarded `export` command requires maintenance,
-stopped writers, and reconciled native job history.
+Create GitHub Environments named `staging` and `production`. Restrict deployment
+branches to `main`, and require a production reviewer where available. Set these
+values separately in each environment:
 
-### Season schema cutover (`0003_seasons.sql`)
+| Kind | Name | Value |
+| --- | --- | --- |
+| Variable | `CLOUDFLARE_ACCOUNT_ID` | Approved account ID matching `wrangler.jsonc` |
+| Secret | `CLOUDFLARE_API_TOKEN` | Account-scoped deployment token |
+| Secret | `DISCORD_CLIENT_SECRET` | Discord OAuth client secret |
+| Secret | `DISCORD_BOT_TOKEN` | Discord bot token |
+| Secret | `SESSION_SECRET` | Environment-specific session signing key |
+| Secret | `SUBMISSION_TOKEN_SECRET` | Intended submission-link signing key |
 
-This is not a rolling-compatible schema change. Migration refuses nonterminal
-D1 jobs and unfinished native Workflows, including paused instances. Paused
-instances retain their old code and must never resume across this cutover.
+In **Actions → Deploy → Run workflow**, select `main` and the target environment,
+then run the workflow after reviewing the pending migrations.
+Deploy a reviewed revision whose CI has passed; this workflow does not rerun or
+automatically wait for the CI suite.
 
-For an already published staging target:
+The workflow caches npm downloads, installs locked dependencies, builds the
+selected environment, and then:
 
-1. Build staging and use `maintenance --inflight-reviewed`. Confirm the deployed
-   write fence, drain in-flight HTTP work, and keep Discord/schedules disabled.
-2. Review and explicitly terminate every unfinished old native instance. Reconcile
-   orphan D1 history as well. Maintenance/export synchronizes terminated native
-   instances to cancelled history; pausing alone is insufficient.
-3. Use `export --output "$BACKUP_SQL" --writers-stopped` in an owner-only directory
-   and verify the actual export. Preserve the backup and original configuration.
-4. Temporarily set staging source `routes` to `[]`, retain maintenance mode, and
-   rebuild staging. Run `migrate --writers-stopped` with the normal cloud/account
-   approvals. This D1 operation does not detach the deployed maintenance hostname;
-   do not publish the route-free configuration.
-5. Verify users, submission IDs/data, job relationships, and foreign keys. Restore
-   the approved staging route, set maintenance false, rebuild, and use the guarded
-   `publish` command below. Keep delivery paused and sends/schedules disabled.
+1. Checks the build's environment/account.
+2. Applies pending migrations with `wrangler d1 migrations apply`.
+3. Uploads a uniquely tagged version with `wrangler versions upload`, including
+   the four secrets, with strict checks and resource provisioning disabled.
+4. Deploys that exact tag to 100% of traffic with `wrangler versions deploy`.
+5. Checks the public `/up` response.
 
-Backfill uses original `created_at`: January/February belong to the previous
-starting year. Verify historical timestamps before migrating imported data whose
-creation dates may not identify its actual season. IDs, timestamps, picks,
-autoincrement high-water marks, job relationships, and delivery outcomes are
-preserved. Ambiguous yearless standings suppression expires rather than crossing
-seasons. Recover reviewed work with **new season-pinned retry children** that retain
-delivery scopes, never by resuming old native instances. Production activation
-remains a separate approval.
+These commands are exposed as `db:migrate:remote`, `deploy:upload`, and `deploy`
+in `package.json`; there is no custom runtime behind them. Version deployment
+updates code, assets, variables, secrets, and existing bindings without
+republishing custom domains or Workflow schedules. It does not pause/resume jobs,
+reconcile history, or change the durable delivery fence. Review configuration
+changes explicitly; there is no custom live-configuration drift validator.
 
-## Cloud deployment gates
+The four application secrets remain individual GitHub secrets. The workflow uses
+`jq` to serialize them into an owner-only temporary file for Wrangler, removes
+them from the child process environment, and deletes the file on exit. Secret
+values are not passed as command-line arguments.
 
-Terraform declares the foundational resources; `wrangler.jsonc` declares the
-application configuration. Local, staging, and production have separate names.
-Native origins are `https://pickem-staging.bholzer.me` and
-`https://pickem.bholzer.me`. Provisioning records each remote D1 ID in its selected
-environment; public routes remain empty and sends/schedules disabled until
-explicitly approved.
+Runs are serialized per environment and do not cancel an in-progress release.
+Do not run local cloud operations concurrently. First provisioning/publication,
+breaking migrations, domain or Workflow configuration changes, and deliberate
+delivery activation remain operator tasks below. Production currently has no
+D1 ID or public route; initialize it and commit the approved configuration first.
+
+### Routine migrations
+
+Wrangler applies all pending migrations without an application-specific schema
+gate. The operator is responsible for reviewing compatibility and coordinating
+any breaking changes with the currently deployed Worker and in-flight Workflow
+versions. Keep applied migration files unchanged and present in the checkout.
+
+Wrangler records applied migrations, so rerunning a release skips completed
+files. A failed migration prevents version upload/publication, but earlier
+successful migrations can remain applied. A later upload, deployment, or health
+failure does not undo database changes. Inspect partial changes before retrying;
+there is no automatic rollback.
 
 ### Infrastructure as code
 
-This follows Cloudflare's documented
-[Terraform + Wrangler ownership split](https://developers.cloudflare.com/workers/platform/infrastructure-as-code/):
+Use Terraform `>=1.5,<2` directly with `infrastructure/cloudflare/main.tf`.
+Retain the provider lock (Cloudflare `5.24.0`) and the existing per-environment
+state at `~/.config/nfl-pickem/terraform/<environment>/terraform.tfstate`.
+The provider manages only `cloudflare_d1_database.app` and
+`cloudflare_worker.app`, both with `prevent_destroy`. Do not add a second
+Terraform owner for Wrangler deployments or native Workflows.
 
-| Owner | Declared resources and configuration |
-| --- | --- |
-| Terraform, `infrastructure/cloudflare/main.tf` | D1 database, Worker identity, disabled `workers.dev` and preview URLs |
-| Wrangler, `wrangler.jsonc` | Application versions/deployments, assets, bindings, native Workflow definition and schedules, approved custom-domain attachment |
+Back up state privately first. Existing state, account/environment, names, and
+configured D1 IDs must agree. Missing state is not permission to recreate or
+adopt existing resources. Preserve `.backup` files and use one operator at a
+time; a local lock is not distributed coordination. Never clear IDs, state, or
+locks to force a retry.
 
-The Workflow is not an imperative one-off: its declaration is deployed with
-the Worker by `prepare` or staging `publish`, following the
-[native Workflows deployment model](https://developers.cloudflare.com/workflows/get-started/guide/).
-Do not add a second Terraform owner for the same Workflow or Worker deployment.
-Worker secrets come from the private JSON bundle, not Terraform configuration.
-
-Install Terraform `>=1.5,<2`. The Cloudflare provider is pinned to `5.24.0`;
-retain `infrastructure/cloudflare/.terraform.lock.hcl` in version control.
-The guarded `provision` command initializes Terraform, validates the saved plan
-against the exact environment/account/resource identities, and applies that
-same plan. Only creates and no-ops are allowed; updates, replacements, imports,
-unrelated resources, and deletion are refused. Both resources have
-`prevent_destroy`. A configured D1 ID must agree with existing state; a missing
-state file is not permission to adopt or recreate resources.
-
-State is local and separate per environment:
-`~/.config/nfl-pickem/terraform/<environment>/terraform.tfstate`.
-Directories are owner-only and state files must have no group/other access.
-No shared/remote backend is provisioned. Securely back up this directory and
-restore or deliberately migrate it before operating from another machine.
-Use one operator at a time; the local lock is not a distributed lock.
-Do not clear recorded IDs or state to force a retry after an ambiguous failure.
-Failed Terraform commands retain owner-only diagnostics under a private
-`plan-*` directory and report its path without printing provider output.
-
-With `CLOUDFLARE_API_TOKEN` supplied privately to the process and the approved
-account ID in `CLOUDFLARE_ACCOUNT_ID`:
+Use a clean operator shell with the approved `CLOUDFLARE_API_TOKEN` and
+`CLOUDFLARE_ACCOUNT_ID`, without unexpected Terraform CLI, workspace, variable,
+logging, or authentication overrides. Check existing private path ownership and
+permissions; `umask` protects new files, not existing ones.
 
 ```sh
-node scripts/cloudflare.mjs provision --env staging --approve-cloud \
-  --account-id "$CLOUDFLARE_ACCOUNT_ID"
-npm run build:staging
+umask 077
+ENV=staging
+STATE_DIR="$HOME/.config/nfl-pickem/terraform/$ENV"
+export TF_DATA_DIR="$STATE_DIR/data" TF_WORKSPACE=default
+export TF_VAR_environment="$ENV" TF_VAR_account_id="$CLOUDFLARE_ACCOUNT_ID"
+mkdir -p "$TF_DATA_DIR"
+PLAN_DIR=$(mktemp -d "$STATE_DIR/plan-XXXXXX")
+terraform -chdir=infrastructure/cloudflare init -input=false -reconfigure \
+  -lockfile=readonly -backend-config="path=$STATE_DIR/terraform.tfstate"
+terraform -chdir=infrastructure/cloudflare output -json
+terraform -chdir=infrastructure/cloudflare plan -input=false -lock-timeout=0s \
+  -out="$PLAN_DIR/approved.tfplan"
+terraform -chdir=infrastructure/cloudflare show "$PLAN_DIR/approved.tfplan"
 ```
 
-Re-running `provision` with the same quiescent configuration and state is a no-op
-and retains the D1 ID. Provisioning requires no public routes; use `publish` for
-subsequent public-staging application deployments. Production remains a separate,
-explicit approval and state file.
-
-### Guarded lifecycle
+Stop and review the exact saved plan. Existing resources should normally be
+no-ops. Unexpected updates, replacements, imports, unrelated resources, deletions,
+or identity drift require a separate decision; `prevent_destroy` is not a full
+plan validator. With explicit approval, apply that same file:
 
 ```sh
-node scripts/cloudflare.mjs --help
-node scripts/cloudflare.mjs plan --env staging --operation provision
+terraform -chdir=infrastructure/cloudflare apply -input=false -lock-timeout=0s \
+  "$PLAN_DIR/approved.tfplan"
+terraform -chdir=infrastructure/cloudflare output -json
 ```
 
-`plan` is offline. Actual operations require `--approve-cloud` and the explicit
-`--account-id`; activation, unpause, and imported Workflow creation also require
-`--approve-discord`. These flags acknowledge an operator decision, not permission
-to bypass the delivery checklist.
+Saved-plan apply has no confirmation prompt. Keep plans and provider diagnostics
+private. After legitimate new provisioning, record the verified D1 ID in the
+selected environment of `wrangler.jsonc`, commit it, and rebuild. Do not change
+another environment's ID or replace the existing private state layout.
 
-#### Public staging without delivery
+### First publication and configuration changes
 
-Once staging's schema and private resources are initialized, `publish` makes
-`https://pickem-staging.bholzer.me` available without importing business data or
-enabling Discord. Keep `DISCORD_SEND_ENABLED` and `SCHEDULES_ENABLED` false,
-`MAINTENANCE_MODE` false, and `workers.dev`/preview URLs disabled. Declare only
-the staging custom domain in `env.staging.routes`; do not precreate its DNS
-record. Wrangler owns the custom-domain association and its managed DNS/TLS.
+These are separately approved operator operations, not the routine workflow.
+Identify the exact account, D1, Worker, Workflow, hostname, and zone before acting.
+Freeze concurrent operators and DNS ownership changes. For an existing target,
+follow maintenance below before a breaking change.
 
-Keep native schedules absent. For an unscheduled Workflow, omit `schedules`;
-the pinned Wrangler rejects an explicitly empty Workflow schedule array.
-Freeze staging HTTP/admin writers and DNS ownership changes during publication:
+For a **fresh, offline target only**, apply its initial schema directly:
 
 ```sh
-npm run build:staging
-node scripts/cloudflare.mjs publish --env staging --approve-cloud \
-  --account-id "$CLOUDFLARE_ACCOUNT_ID" \
-  --secrets-file "$HOME/.config/nfl-pickem/native-staging-secrets.json" \
-  --writers-stopped --dns-quiesced
+ENV=staging
+npm run db:migrate:remote -- --env "$ENV"
 ```
 
-`publish` is staging-only. It verifies domain/Workflow ownership, stops existing
-native work, deploys the matching build, reads back ownership, and retains
-`job_settings.paused=1`. It neither imports data nor creates/resumes Workflow
-instances, and does not waive the production activation gates below.
+Verify the initialized data and `job_settings.paused=1`. Configure only the
+approved environment: its D1 ID, exact HTTPS `APP_ORIGIN`, custom domain and zone,
+OAuth client/callback, and Discord allowlists. Keep `workers.dev` and preview
+URLs disabled. Public staging needs no imported data and can keep
+`DISCORD_SEND_ENABLED` and `SCHEDULES_ENABLED` false indefinitely.
 
-All asset requests run through the Worker first so HTTP receives a 308 HTTPS
-redirect before app content or OAuth state cookies. Local development still
-supports HTTP. No zone-wide HTTPS policy change is required.
+For an unscheduled Workflow, omit `schedules`; do not assign an empty array.
+Only with separate delivery approval, verified data, and disabled duplicate
+source dispatchers should you enable sends/schedules and configure the six UTC
+native schedules from `src/server/jobs/store.ts`. Do not add Worker cron triggers.
 
-Anonymous smoke checks cover `/up`, the sign-in page, OAuth initiation, and
-authentication rejection at protected APIs. Discord sign-in still requires an
-existing pool user; publication does not seed users or bypass registration.
-An empty user table therefore prevents a completed Discord login. Valid
-season-bearing submission links retain signed-link registration behavior.
+Use a private, owner-only JSON secrets file outside the repository containing the
+same four application keys as GitHub. Build the selected environment and publish
+the generated configuration without `--env`:
 
-#### Live delivery and data cutover
+```sh
+npm run "build:$ENV"
+npx --no-install wrangler deploy --config dist/server/wrangler.json \
+  --strict --experimental-provision=false \
+  --secrets-file "$HOME/.config/nfl-pickem/native-$ENV-secrets.json"
+```
 
-1. Approve the Cloudflare account and its existing `bholzer.me` zone, the exact
-   environment hostname, OAuth application, and Discord recipient/channel allowlists.
-2. Use `provision`, then rebuild the selected environment if its D1 ID changed.
-   Provisioning records the ID in source; older build output with another ID
-   is rejected.
-3. Use `prepare` with private secrets and no public routes or schedules, then
-   `migrate`. Use `import` only for an approved business-data migration. All three
-   require `--writers-stopped` after freezing HTTP/admin writers and draining
-   in-flight work; import additionally requires `--source-quiesced`. Existing D1
-   delivery is fenced and existing native Workflows are paused/read back before
-   mutation. A same-named Workflow must belong to the intended Worker; foreign
-   or ambiguous ownership is rejected before controlling its instances.
-4. Verify the actual target export and operational plan. Do not enable sends
-   against an unverified database.
-5. Keep the selected environment's exact configured HTTPS origin and add one
-   custom-domain route with the existing zone's ID, OAuth client ID, Discord
-   allowlists, and native Workflow schedules. Register the corresponding OAuth
-   callback before activation. Enable sending/schedules only when approved.
-   Use the existing six UTC schedules, not duplicate Worker cron triggers.
-6. Rebuild with `npm run build:staging` or `npm run build:production`.
-   Deploy the generated `dist/server/wrangler.json`; do not pass `--env` to it.
-   Source/build mismatches are rejected.
-7. Use `activate` with `--verified-data`, `--source-quiesced`, both approvals,
-   `--dns-quiesced`, and `--secrets-file`. Keep DNS changes frozen while it
-   checks the exact account, `bholzer.me` zone, hostname, and existing owner.
-   An unattached hostname must have no existing DNS records of any type; the
-   operation refuses to overwrite records or adopt another Worker's domain.
-   Delivery is fenced before deployment and released only after the custom
-   domain is read back as owned by the intended Worker. `unpause` requires the
-   same domain verification and DNS freeze before retrying registered wakeups.
-8. Use `workflows --file "$WORKFLOW_PLAN"` for the verified
-   imported jobs, with the same data/quiescence acknowledgments and approvals.
-   Review confirmed IDs on partial failure instead of blindly repeating jobs.
+Unlike version deployment, this command publishes domains and Workflow
+configuration. **`--strict` does not prevent custom-domain takeover in
+noninteractive Wrangler.** Inspect exact hostname ownership/DNS beforehand and
+verify the resulting association, bindings, and schedules afterward. Do not
+automate full publication by assuming that flag supplies a domain safety check.
+Retain delivery fences until all checks pass.
 
-The private secrets JSON contains `DISCORD_CLIENT_SECRET`, `DISCORD_BOT_TOKEN`,
-`SESSION_SECRET`, and `SUBMISSION_TOKEN_SECRET`. Keep it owner-only and outside
-the repository. Never paste production secrets into chat or commit them.
+Check `/up`, HTTPS redirection, sign-in/OAuth initiation, and protected API
+rejection. `/up` is liveness, not proof of correct data or a write fence.
+Discord login still requires an existing pool user; publication does not seed
+users or bypass registration. Valid season-bearing submission links retain
+signed-link registration behavior.
 
-Keep a separate `SESSION_SECRET` for each environment. Preserve the intended
-`SUBMISSION_TOKEN_SECRET` for valid season-bearing links; the season cutover does
-not require rotating it. Historical yearless JWTs must be reissued even if their
-signatures are valid. Verify signing-key provenance before relying on any imported
-links; a local credential backup alone does not establish live-production
-provenance. The native application reads its configured secrets, not the retired
-application's credential files.
+### Secrets and permissions
 
-Domain inspection, publication, activation, unpause, and detach require an
-appropriately account/zone-scoped `CLOUDFLARE_API_TOKEN` in the operator
-environment, even when Wrangler itself uses an existing login.
+Use distinct session keys per environment and a distinct intended submission
+key, generated with at least 32 random bytes. Preserve the intended
+`SUBMISSION_TOKEN_SECRET`; the season cutover does not require rotating it.
+Yearless JWTs must be reissued even with valid signatures. Verify imported
+signing-key provenance; retired credential files are not native configuration.
+Never commit or print secret values, tokens, SQL snapshots, or Terraform state.
 
-Wrangler's browser login can read zone and Workers identities, but its available
-OAuth scopes do not include DNS-record reads. A DNS API `403` must not be treated
-as an empty record set. Use a custom API token for the guarded deployment commands:
-
-| Resource scope | Permissions |
-| --- | --- |
-| Only the configured Cloudflare account | Account Settings: Read; Workers Scripts: Edit; D1: Edit |
-| Only `bholzer.me` | Zone: Read; DNS: Read; Workers Routes: Edit |
-
-Cloudflare may label write permissions as **Write** rather than **Edit**.
-Keep the token private, set an appropriate expiry, and supply it as
-`CLOUDFLARE_API_TOKEN` only to the deployment process. Do not use a Global API key.
-
-## DNS ownership
-
-Native staging uses `pickem-staging.bholzer.me`; production uses
-`pickem.bholzer.me`. Both belong to the user's **existing Cloudflare `bholzer.me`
-zone**. No zone migration, full-zone ownership, or registrar changes are needed.
-Other hostnames and DNS records remain under their existing management.
-The existing zone ID is `edfc5bace78326d69aedc239f8e3fa91`.
-
-Activation verifies the returned zone ID, exact zone name, and approved account.
-For an unattached hostname, the exact-name DNS inventory must be complete and
-empty. Do not precreate address records: the approved Workers custom-domain
-attachment supplies DNS and TLS. Any existing record or another Worker's
-association blocks activation; resolve ownership explicitly outside this tool
-rather than deleting unrelated DNS. An existing association with the intended
-Worker in the approved zone is safe to activate again.
-
-Changing the public origin requires registering its exact Discord OAuth callback:
-`https://pickem-staging.bholzer.me/auth/discord/callback` for staging and
-`https://pickem.bholzer.me/auth/discord/callback` for production.
-
-Changing `APP_ORIGIN` does not rewrite already-distributed links or redirect
-traffic from other hostnames. Handle those links explicitly; do not change
-unrelated DNS records or OAuth callbacks implicitly.
+Scope deployment tokens to the approved account with Account Settings: Read,
+Workers Scripts: Edit, and D1: Edit. Operators publishing or inspecting domains
+also need Zone: Read, DNS: Read, and Workers Routes: Edit for `bholzer.me` only.
+Cloudflare may label Edit as Write. Use an expiring custom API token, not a
+Global API key; Wrangler browser-login scopes do not supply DNS-record reads.
+An authorization failure is not an empty DNS inventory.
 
 ## Maintenance and recovery
 
+There is no automatic maintenance/cutover controller. Use native tools and
+existing application administration, with explicit approval and one operator.
 Do not restore an old business snapshot after the Worker has accepted writes.
 
-1. Use `node scripts/cloudflare.mjs maintenance --env staging` (or `production`)
-   with `--approve-cloud`, the approved `--account-id`, and `--inflight-reviewed`.
-   It sets the durable D1 delivery fence first, persists/deploys maintenance mode
-   while retaining routes, disables schedules and sends, pauses native instances,
-   and reconciles paused history. Keep delivery fenced if any step fails.
-2. Drain in-flight HTTP requests and freeze administrator changes. Use `export`
-   with `--writers-stopped` and a new `--output` SQL path to capture the latest
-   quiesced D1 state. Export refuses paused native instances without corresponding
-   D1 history; reconcile their original parameters before taking the snapshot.
-3. Verify business content, job history, delivery outcomes, and suppression expiry.
-   Resolve ambiguous sends before retrying work. Preserve both original snapshots
-   and the latest verified export.
-4. Recover through a deliberately rebuilt, source-matched native publication or
-   activation with its required approvals. Activation does not automatically
-   resume individually paused Workflows; review them through native job
-   administration before resuming or replacing work.
+1. Establish an administrator session at `/admin/jobs` before maintenance blocks
+   OAuth callbacks. Use global Pause and verify `job_settings.paused=1`. This is
+   a durable delivery fence, not an HTTP write freeze or recall of in-flight sends.
+   If administration is unavailable, an approved D1 update of that existing row
+   to `paused=1`, followed by readback, is a one-way safety fallback.
+2. Set the selected source environment to `MAINTENANCE_MODE="true"`,
+   `DISCORD_SEND_ENABLED="false"`, and `SCHEDULES_ENABLED="false"`. Omit Workflow
+   schedules, retain approved routes, rebuild, and use the full publication
+   command above. Verify native schedules are removed and the actual HTTP write
+   fence works. Drain in-flight requests/sends and stop source/admin writers.
+3. Inventory all Workflows belonging to this Worker and every page of their
+   instances, plus D1 job history. Use application Pause/Cancel for known jobs;
+   it coordinates native state with durable history. Inspect orphan instances,
+   missing history, delivery outcomes, and ambiguous sends before retrying work.
+4. Finish reconciliation, stop all remaining writers, then take and verify a
+   fresh private D1 export. Some job-history reads reconcile state and therefore
+   write to D1; perform them before the final snapshot freeze.
+5. Recover through reviewed compatible code/configuration while delivery remains
+   fenced. Enable sends/schedules only with separate approval, verified data,
+   domain/OAuth/allowlists, and stopped duplicate dispatchers. Leave maintenance,
+   then use application global Unpause; it wakes registered delivery waiters.
+   SQL `paused=0` omits those wakeups. A partially failed unpause can already have
+   cleared the fence; review and deliberately retry the same operation.
 
-Domain removal is a separate decision, not a normal recovery step. `detach` needs
-`--snapshot-verified` after latest-snapshot and restore verification. It deletes
-only the verified custom-domain association and confirms its absence before
-persisting/deploying empty routes. Use `--zone-id` when retrying after routes are
-already empty. Keep delivery fenced, retain verified snapshots, and handle
-already-distributed links explicitly.
+Native inventory/control commands use source configuration and are remote by
+default. Repeat inventory for **every page** and inspect exact Worker ownership;
+do not operate on another application's similarly named Workflow.
+
+```sh
+WF="nfl-pickem-$ENV-jobs"
+npx --no-install wrangler workflows list \
+  --config wrangler.jsonc --env "$ENV" --page 1 --per-page 100 --json
+npx --no-install wrangler workflows describe "$WF" \
+  --config wrangler.jsonc --env "$ENV" --json
+npx --no-install wrangler workflows instances list "$WF" \
+  --config wrangler.jsonc --env "$ENV" --page 1 --per-page 100 --json
+npx --no-install wrangler workflows instances describe "$WF" "$ID" \
+  --config wrangler.jsonc --env "$ENV" --json
+```
+
+For reviewed orphan/old instances, native `workflows instances pause` or
+`terminate` takes the same Workflow name and explicit ID; never use `latest`.
+Read back the final state: `waitingForPause` is not paused. Native controls alone
+do not update D1. In particular, history reads skip already-paused D1 rows, so
+terminating an instance does not automatically retire its paused row. Prefer
+application Cancel, or a separately reviewed per-ID repair if compatible
+administration is unavailable.
+
+Individually paused jobs remain paused after global Unpause. Review them
+separately; preserve delivery scopes, effect/message records, suppression expiry,
+and original dispatch timing. Prefer app Enqueue/Retry over bulk native triggers.
+Imported work requires reviewed season-qualified parameters and exact IDs; after
+an ambiguous creation failure, inspect that ID rather than creating a duplicate.
+Discord sends and D1 commits are not atomic or exactly-once.
+
+## Data import and snapshots
+
+Keep original snapshots and the latest verified export in owner-only directories
+outside the checkout. After writer/dispatcher freeze, drain, and reconciliation:
+
+```sh
+umask 077
+npx --no-install wrangler d1 export "nfl-pickem-$ENV" --remote \
+  --config wrangler.jsonc --env "$ENV" --output "$BACKUP_SQL"
+```
+
+Use a new private output path and verify actual contents and restore suitability.
+For an approved business-data import into a fresh, offline, already-migrated
+target, use `wrangler d1 execute DB --remote --config wrangler.jsonc --env "$ENV"
+--file "$IMPORT_SQL"`. A complete schema-bearing backup is not a data-only import;
+do not blindly execute it into existing tables. An entire SQL import is not
+guaranteed atomic. Keep a partially changed target offline and inspect it before
+retrying. Verify an actual target export before enabling deliveries.
+
+### Season schema cutover (`0003_seasons.sql`)
+
+This is **not rolling-compatible**. The SQL rejects nonterminal **D1 history**;
+it cannot inspect native instances. For an already-published target:
+
+1. Complete the maintenance fence and writer/dispatcher freeze above.
+2. Cancel/terminate every unfinished old native instance, including paused ones.
+   Require only native `complete`, `errored`, or `terminated` states; unknown
+   states block cutover. Reconcile D1 separately, including paused/orphan rows.
+   The following query must return no rows, but does not prove native retirement:
+   `SELECT id,status FROM job_runs WHERE status NOT IN
+   ('complete','errored','cancelled','superseded','creation_failed')`.
+3. Take and verify the latest actual private export. Preserve original
+   configuration, IDs, timestamps, picks/tiebreakers, autoincrement high-water
+   marks, job relationships, delivery scopes/outcomes, and suppression expiry.
+4. With all fences still held, run `npm run db:migrate:remote -- --env "$ENV"`.
+   There is no need to remove routes for a D1 command. Verify migration history,
+   business content/identities, season backfills, and `PRAGMA foreign_key_check`.
+5. Publish reviewed compatible code, leave maintenance deliberately, and retain
+   delivery fences until separately approved recovery.
+
+Backfill uses original `created_at`; January/February belong to the preceding
+starting year. Verify historical timestamps before migrating imports whose
+creation dates may not identify their actual season. Ambiguous yearless standings
+suppression expires rather than crossing seasons. Never resume pre-cutover native
+code: recover reviewed work through **new season-pinned retry children** retaining
+delivery scopes.
+
+## DNS ownership
+
+Staging is `pickem-staging.bholzer.me`; production is `pickem.bholzer.me`, both in
+the existing `bholzer.me` zone `edfc5bace78326d69aedc239f8e3fa91`.
+Do not migrate the zone, precreate custom-domain DNS records, or modify unrelated
+records. Before full publication, verify the exact zone/account and either the
+intended Worker's existing association or an unattached hostname with no existing
+DNS records of any type. Conflicts require a separate ownership decision, not
+automatic takeover. Keep DNS changes frozen through publication and readback.
+
+Register the exact Discord callback `<APP_ORIGIN>/auth/discord/callback`.
+Changing `APP_ORIGIN` does not rewrite distributed links or redirect other hosts.
+Domain removal is a separate approved operation after latest-snapshot/restore
+verification: remove only the confirmed owned association and verify its absence.
+An empty source routes array alone is not proof of detachment. Keep delivery
+fenced and handle existing links explicitly; preserve unrelated DNS and callbacks.
 
 ## Retired implementation backups
 

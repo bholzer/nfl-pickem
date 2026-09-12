@@ -87,8 +87,12 @@ test("signed link saves real picks, history and public standings across deep lin
   await expect(
     page.getByRole("heading", { name: "Your picks", exact: true }),
   ).toBeVisible();
-  await expect(page.getByText("Correct", { exact: true })).toBeVisible();
-  await expect(page.getByText("Incorrect", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("list").getByText("Correct", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("list").getByText("Incorrect", { exact: true }),
+  ).toBeVisible();
 
   await page.goto(`/standings?season=${rehearsal.season}&week=2`);
   await expect(

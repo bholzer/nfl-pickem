@@ -8,7 +8,7 @@ terraform {
     }
   }
 
-  # The runner supplies an owner-only path outside the repository.
+  # Configure an owner-only state path outside the repository during terraform init.
   backend "local" {}
 }
 

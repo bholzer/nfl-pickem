@@ -30,8 +30,10 @@
     "rehearsal:serve": "node scripts/rehearsal/serve.mjs",
     "test:e2e": "playwright test",
     "db:migrate:local": "WRANGLER_SEND_METRICS=false wrangler d1 migrations apply DB --local --env local --config wrangler.jsonc",
-    "deploy:dry-run": "npm run build:staging && WRANGLER_SEND_METRICS=false wrangler deploy --dry-run --config dist/server/wrangler.json",
-    "deploy": "node scripts/cloudflare.mjs"
+    "db:migrate:remote": "WRANGLER_SEND_METRICS=false wrangler d1 migrations apply DB --remote --config wrangler.jsonc",
+    "deploy:dry-run": "npm run build:staging && npm run deploy:upload -- --dry-run",
+    "deploy:upload": "WRANGLER_SEND_METRICS=false wrangler versions upload --config dist/server/wrangler.json --strict --experimental-provision=false",
+    "deploy": "WRANGLER_SEND_METRICS=false wrangler versions deploy --config dist/server/wrangler.json --yes"
   },
   "dependencies": {
     "@fontsource-variable/dm-sans": "5.3.0",
