@@ -32,6 +32,9 @@ it does not load `.dev.vars`, deployment secret bundles, or existing local datab
 ESPN is replaced at the outbound transport boundary. Discord calls and all
 unrecognized outbound requests are blocked. Stop the process to remove its state.
 The developer server uses port 5173; the isolated rehearsal uses port 5180.
+The rehearsal also prints public winner and pending receipt links. Their Discord
+message references are synthetic, not real publications. The winner fixture
+contains Unicode text and preserves the earlier name after a profile-name change.
 
 ## Corn Town interface
 
@@ -189,6 +192,45 @@ Week and standings reads accept `?season=YYYY`; omission selects the current sea
 Saving `PUT /api/submissions/:week?season=YYYY` requires the season explicitly.
 Job enqueue requests and private Workflow plans require `season`; a null week
 resolves only within that pinned season's current regular-season period.
+
+### Winner receipt comparison
+
+New hash publications atomically preserve each exact legacy summary and SHA-256
+alongside the frozen Discord message. The existing username/pick-text/tiebreaker
+format, kickoff wait, and hash algorithm are unchanged. Each receipt records
+which message part contains its hash; the actual successful Discord response
+provides that part's channel and message IDs. Server-channel metadata supplies
+the guild ID for a valid original-message link.
+
+New winner announcements include **View receipt** and, when the line fits,
+**Original hash message**. The receipt page always includes the original-message
+link. It uses the earliest successfully recorded publication for that submission
+and season/week, not an unpublished or later replacement hash.
+
+`/receipts/:id` and `GET /api/receipts/:id` work without sign-in for published,
+currently winning submissions. Early winners see a pending page without receipt
+text or sharing controls. The complete receipt, including the winner's tiebreaker,
+is public only after every current game is final and the scoreboard includes
+every game in the frozen snapshot. Missing coverage fails closed. Nonwinner and
+unpublished receipts remain unavailable; private submission routes and ordinary
+standings disclosure rules are unchanged.
+
+The page offers exact-text copy, a UTF-8 `receipt.txt` download, and an independent
+[CyberChef](https://gchq.github.io/CyberChef/) link with one SHA-256 operation.
+The original input travels in the URL fragment, not the HTTP query. Compare all
+64 output characters against the earlier Discord publication, not merely the
+hash displayed on the receipt page. Downloads and deep links preserve the
+original bytes; extra whitespace or line-ending changes affect the hash.
+The recorded snapshot time is not proof of a pre-kickoff submission.
+
+Migration `0004_receipts.sql` adds publication, receipt, and per-part reference
+tables. Apply it through the normal approved migration/release process before
+running the new code. Existing raw hash snapshots and cached standings replay
+unchanged; no historic receipts or message IDs are invented or backfilled.
+Retry scopes, part keys, suppression, and pause gates are retained. A recorded
+successful part is reused if a later checkpoint fails; a send whose response was
+not durably recorded still requires ambiguous-send review. This is not
+exactly-once Discord delivery, and the feature does not activate sends or schedules.
 
 ## Cloud deployment
 

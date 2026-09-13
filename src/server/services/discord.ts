@@ -7,7 +7,7 @@ import type {
 } from "../../shared/contracts";
 import type { Env } from "../env";
 import { generateSubmissionToken } from "../tokens";
-import { verificationHash } from "./summary";
+import { submissionSummary, summaryHash } from "./summary";
 import { isTrustedWebOrigin } from "./origin";
 
 const DISCORD_API = "https://discord.com/api/v10";
@@ -128,10 +128,10 @@ function isDiscordResponse(
   return record(value) && validId(value.id);
 }
 
-async function discordPost(
+async function discordRequest(
   env: Env,
   path: string,
-  payload: object,
+  payload?: object,
 ): Promise<Record<string, unknown> & { id: string }> {
   const controller = new AbortController();
   const timer = setTimeout(() => {
@@ -139,7 +139,7 @@ async function discordPost(
   }, REQUEST_TIMEOUT_MS);
   try {
     const response = await fetch(`${DISCORD_API}${path}`, {
-      method: "POST",
+      method: payload === undefined ? "GET" : "POST",
       headers: {
         Authorization: `Bot ${env.DISCORD_BOT_TOKEN}`,
         "Content-Type": "application/json",
@@ -187,26 +187,61 @@ async function discordPost(
   }
 }
 
+export interface DiscordMessage {
+  channelId: string;
+  messageId: string;
+}
+
+export interface DiscordDestination {
+  channelId: string;
+  guildId: string;
+}
+
+export async function getChannelDestination(
+  env: Env,
+  channelId: string,
+): Promise<DiscordDestination> {
+  authorize(env, channelId, "channel");
+  const channel = await discordRequest(env, `/channels/${channelId}`);
+  if (channel.id !== channelId || !validId(channel.guild_id)) {
+    throw new DiscordError("Discord returned an invalid server channel", false);
+  }
+  return { channelId: channel.id, guildId: channel.guild_id };
+}
+
 async function sendParts(
   env: Env,
   channelId: string,
   parts: string[],
-): Promise<void> {
+): Promise<DiscordMessage[]> {
+  const messages: DiscordMessage[] = [];
   for (const content of parts) {
-    await discordPost(env, `/channels/${channelId}/messages`, {
-      content,
-      allowed_mentions: { parse: [] },
-    });
+    const response = await discordRequest(
+      env,
+      `/channels/${channelId}/messages`,
+      {
+        content,
+        allowed_mentions: { parse: [] },
+      },
+    );
+    if (response.channel_id !== channelId) {
+      throw new DiscordError(
+        "Discord returned an unexpected message channel",
+        false,
+      );
+    }
+    messages.push({ channelId: response.channel_id, messageId: response.id });
   }
+  return messages;
 }
 
 export async function sendChannelMessage(
   env: Env,
   channelId: string,
   message: string,
-): Promise<void> {
+): Promise<DiscordMessage[]> {
   authorize(env, channelId, "channel");
-  await sendParts(env, channelId, splitDiscordMessage(message));
+  return sendParts(env, channelId, splitDiscordMessage(message));
 }
 
 export async function sendDirectMessage(
@@ -216,7 +251,7 @@ export async function sendDirectMessage(
 ): Promise<void> {
   authorize(env, userId, "user");
   const parts = splitDiscordMessage(message);
-  const channel = await discordPost(env, "/users/@me/channels", {
+  const channel = await discordRequest(env, "/users/@me/channels", {
     recipient_id: userId,
   });
   // A new DM channel inherits only the approved recipient's authorization, never
@@ -243,15 +278,9 @@ function displayName(user: User): string {
     .replace(/([\\`*_{}[\]()<>#+.!|~])/g, "\\$1");
 }
 
-export async function sendSubmissionLink(
-  env: Env,
-  user: User,
-  period: SeasonWeek,
-): Promise<void> {
-  if (!user.discordId) {
-    throw new DiscordError("User has no Discord recipient ID", false);
-  }
-  authorize(env, user.discordId, "user");
+export function applicationOrigin(
+  env: Pick<Env, "APP_ORIGIN" | "APP_ENV">,
+): URL {
   let origin: URL;
   try {
     origin = new URL(env.APP_ORIGIN);
@@ -264,6 +293,19 @@ export async function sendSubmissionLink(
       false,
     );
   }
+  return origin;
+}
+
+export async function sendSubmissionLink(
+  env: Env,
+  user: User,
+  period: SeasonWeek,
+): Promise<void> {
+  if (!user.discordId) {
+    throw new DiscordError("User has no Discord recipient ID", false);
+  }
+  authorize(env, user.discordId, "user");
+  const origin = applicationOrigin(env);
   let token: string;
   try {
     token = await generateSubmissionToken(
@@ -289,6 +331,10 @@ export async function sendSubmissionLink(
 export function renderStandings(
   standings: Standing[],
   period: SeasonWeek,
+  receiptLinks?: ReadonlyMap<
+    number,
+    { url: string; originalMessageUrl: string }
+  >,
 ): string {
   if (!standings.length) {
     throw new DiscordError("No standings to deliver", false);
@@ -308,7 +354,18 @@ export function renderStandings(
       standing.tiebreakerDiff === null
         ? ""
         : ` (Tiebreaker: ${standing.tiebreaker}, off by ${standing.tiebreakerDiff})`;
-    return `${standing.rank}. ${displayName(standing.user)}: ${points}${tiebreaker}`;
+    const line = `${standing.rank}. ${displayName(standing.user)}: ${points}${tiebreaker}`;
+    const receipt = standing.winner
+      ? receiptLinks?.get(standing.submissionId)
+      : undefined;
+    if (!receipt) {
+      return line;
+    }
+    const linked = `${line} · [View receipt](${receipt.url})`;
+    const original = ` · [Original hash message](${receipt.originalMessageUrl})`;
+    return linked.length + original.length <= MESSAGE_LIMIT
+      ? linked + original
+      : linked;
   };
   if (winners.length) {
     sections.push(
@@ -330,10 +387,17 @@ export function renderStandings(
   return sections.join("\n\n");
 }
 
+export interface RenderedHashReceipt {
+  submissionId: number;
+  username: string | null;
+  summary: string;
+  verificationHash: string;
+}
+
 export async function renderHashes(
   submissions: SubmissionWithUser[],
   scoreboard: Scoreboard,
-): Promise<string> {
+): Promise<{ message: string; receipts: RenderedHashReceipt[] }> {
   if (!submissions.length) {
     throw new DiscordError("No submission hashes to deliver", false);
   }
@@ -344,6 +408,7 @@ export async function renderHashes(
     );
   }
   const entries: string[] = [];
+  const receipts: RenderedHashReceipt[] = [];
   for (const submission of submissions) {
     if (
       submission.season !== scoreboard.season ||
@@ -351,9 +416,18 @@ export async function renderHashes(
     ) {
       throw new DiscordError("Submission and scoreboard periods differ", false);
     }
-    entries.push(
-      `**${displayName(submission.user)}**: \`${await verificationHash(submission, scoreboard)}\``,
-    );
+    const summary = submissionSummary(submission, scoreboard);
+    const hash = await summaryHash(summary);
+    entries.push(`**${displayName(submission.user)}**: \`${hash}\``);
+    receipts.push({
+      submissionId: submission.id,
+      username: submission.user.username,
+      summary,
+      verificationHash: hash,
+    });
   }
-  return `# ${scoreboard.season} Week ${scoreboard.week} Pick Hashes (SHA-256 Hex)\nUse this hash to verify the winner's picks\n\n${entries.join("\n\n")}`;
+  return {
+    message: `# ${scoreboard.season} Week ${scoreboard.week} Pick Hashes (SHA-256 Hex)\nUse this hash to verify the winner's picks\n\n${entries.join("\n\n")}`,
+    receipts,
+  };
 }

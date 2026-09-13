@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import type { HonoRequest } from "hono";
 import { HTTPException } from "hono/http-exception";
-import type { Picks } from "../shared/contracts";
+import type { Picks, PublicReceipt, Scoreboard } from "../shared/contracts";
 import { validSeason, validWeek } from "../shared/season";
 import type { AppBindings } from "./env";
 import { readSession, requireAdmin, requireCsrf, requireUser } from "./auth";
@@ -14,6 +14,7 @@ import {
   listWeekSubmissions,
   saveSubmission,
 } from "./db";
+import { getFrozenReceipt, type FrozenReceipt } from "./receipts";
 import { dashboard } from "./services/dashboard";
 import { EspnError, fetchScoreboard, getSeasonContext } from "./services/espn";
 import {
@@ -146,6 +147,18 @@ function validateSubmission(body: {
   return { valid: false, fields };
 }
 
+function receiptBoardCovered(
+  receipt: FrozenReceipt,
+  scoreboard: Scoreboard,
+): boolean {
+  const currentGameIds = new Set(scoreboard.games.map((game) => game.id));
+  return (
+    currentGameIds.size > 0 &&
+    receipt.gameIds.length > 0 &&
+    receipt.gameIds.every((id) => currentGameIds.has(id))
+  );
+}
+
 export const apiRoutes = new Hono<AppBindings>();
 apiRoutes.use("*", async (c, next) => {
   c.header("Cache-Control", "no-store");
@@ -169,6 +182,50 @@ apiRoutes.get("/session", async (c) => {
   const session = await readSession(c);
   return c.json(session ?? { user: null, csrfToken: null });
 });
+apiRoutes.get("/receipts/:id", async (c) => {
+  const id = c.req.param("id");
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+  ) {
+    return c.json({ error: "Receipt not found" }, 404);
+  }
+  const receipt = await getFrozenReceipt(c.env.DB, id);
+  if (!receipt?.originalMessageUrl) {
+    return c.json({ error: "Receipt not found" }, 404);
+  }
+  const scoreboard = await fetchScoreboard(receipt);
+  // A partial board cannot establish either winner eligibility or safe disclosure.
+  if (!receiptBoardCovered(receipt, scoreboard)) {
+    return c.json({ error: "Receipt not found" }, 404);
+  }
+  const standings = calculateStandings(
+    await listWeekSubmissions(c.env.DB, receipt),
+    scoreboard,
+  );
+  const winner = standings.some(
+    (standing) =>
+      standing.submissionId === receipt.submissionId && standing.winner,
+  );
+  if (!winner) {
+    return c.json({ error: "Receipt not found" }, 404);
+  }
+  const metadata = {
+    id: receipt.id,
+    season: receipt.season,
+    week: receipt.week,
+    username: receipt.username,
+    verificationHash: receipt.verificationHash,
+    snapshotAt: receipt.snapshotAt,
+    originalMessageUrl: receipt.originalMessageUrl,
+  };
+  const result: PublicReceipt = scoreboard.games.every(
+    (game) => game.status === "STATUS_FINAL",
+  )
+    ? { ...metadata, status: "available", summary: receipt.summary }
+    : { ...metadata, status: "pending" };
+  return c.json(result);
+});
+
 apiRoutes.use("*", requireUser);
 
 apiRoutes.get("/dashboard", async (c) =>

@@ -15,13 +15,25 @@ import { createUpstreams, members } from "./upstreams.mjs";
  * @property {string} directory
  * @property {number} season
  * @property {number} historicalSeason
- * @property {{player: string, rival: string, admin: string}} links
+ * @property {{player: string, rival: string, admin: string, receipt: string, pendingReceipt: string}} links
  * @property {RehearsalDatabase} db
  * @property {ReturnType<typeof createUpstreams>} upstreams
  * @property {() => Promise<void>} close
  */
 
 const root = fileURLToPath(new URL("../../", import.meta.url));
+const receiptExamples = {
+  receipt: {
+    id: "00000000-0000-4000-8000-000000000101",
+    week: 1,
+    userId: members.player.id,
+  },
+  pendingReceipt: {
+    id: "00000000-0000-4000-8000-000000000102",
+    week: 3,
+    userId: members.rival.id,
+  },
+};
 
 /** @param {string} parent @param {string} path */
 function inside(parent, path) {
@@ -196,6 +208,7 @@ async function seedDatabase(db, season) {
   const rows = [
     { userId: members.player.id, season, week: 1, home: true, tiebreaker: 40 },
     { userId: members.rival.id, season, week: 2, home: false, tiebreaker: 39 },
+    { userId: members.rival.id, season, week: 3, home: false, tiebreaker: 39 },
     {
       userId: members.player.id,
       season: season - 1,
@@ -233,6 +246,106 @@ async function seedDatabase(db, season) {
         ),
     ),
   );
+}
+
+/**
+ * Synthetic publication references only: rehearsal never sends to Discord.
+ * @param {RehearsalDatabase} db
+ * @param {import("../../src/shared/contracts").SubmissionDetail} detail
+ * @param {string} id
+ */
+async function seedReceipt(db, detail, id) {
+  const { submission, summary, verificationHash, scoreboard } = detail;
+  const timestamp = new Date().toISOString();
+  const channelId = "900000000000000999";
+  await db.batch([
+    db
+      .prepare(
+        "INSERT INTO hash_publications(snapshot_key,id,season,week,channel_id,guild_id,snapshot_at) VALUES(?,?,?,?,?,?,?)",
+      )
+      .bind(
+        `rehearsal:${submission.season}:${submission.week}:hash`,
+        id,
+        submission.season,
+        submission.week,
+        channelId,
+        "900000000000000001",
+        timestamp,
+      ),
+    db
+      .prepare(
+        "INSERT INTO hash_receipts(id,publication_id,submission_id,username,summary,verification_hash,game_ids,part_index) VALUES(?,?,?,?,?,?,?,0)",
+      )
+      .bind(
+        id,
+        id,
+        submission.id,
+        submission.user.username,
+        summary,
+        verificationHash,
+        JSON.stringify(scoreboard.games.map((game) => game.id)),
+      ),
+    db
+      .prepare(
+        "INSERT INTO hash_publication_parts(publication_id,part_index,channel_id,message_id,published_at) VALUES(?,0,?,?,?)",
+      )
+      .bind(id, channelId, `90000000000000000${submission.week}`, timestamp),
+  ]);
+}
+
+/**
+ * Obtain receipt bytes from the real local API, not a duplicate summary renderer.
+ * @param {RehearsalDatabase} db
+ * @param {Miniflare} runtime
+ * @param {string} adminLink
+ * @param {number} season
+ */
+async function seedReceipts(db, runtime, adminLink, season) {
+  const signedIn = await runtime.dispatchFetch(adminLink, {
+    redirect: "manual",
+  });
+  if (signedIn.status !== 302) {
+    throw new Error(
+      "Could not establish the synthetic receipt-seeding session",
+    );
+  }
+  const cookie = signedIn.headers
+    .getSetCookie()
+    .map((value) => value.split(";")[0])
+    .join("; ");
+  // The saved receipt deliberately outlives a display-name change and contains
+  // non-ASCII text, exercising exact UTF-8 downloads and external verification.
+  await db
+    .prepare("UPDATE users SET discord_username=? WHERE id=?")
+    .bind("Rehearsal Player · Zoë 雪", members.player.id)
+    .run();
+  try {
+    for (const example of Object.values(receiptExamples)) {
+      const response = await runtime.dispatchFetch(
+        `${new URL(adminLink).origin}/api/admin/submissions?season=${season}&week=${example.week}`,
+        { headers: { Cookie: cookie } },
+      );
+      if (!response.ok) {
+        throw new Error("Could not load synthetic receipt details");
+      }
+      const data =
+        /** @type {{submissions: import("../../src/shared/contracts").SubmissionDetail[]}} */ (
+          await response.json()
+        );
+      const detail = data.submissions.find(
+        (entry) => entry.submission.userId === example.userId,
+      );
+      if (!detail) {
+        throw new Error("Synthetic receipt submission is missing");
+      }
+      await seedReceipt(db, detail, example.id);
+    }
+  } finally {
+    await db
+      .prepare("UPDATE users SET discord_username=? WHERE id=?")
+      .bind(members.player.username, members.player.id)
+      .run();
+  }
 }
 
 /** Starts actual Vite output with Miniflare's native D1, Workflows and asset router.
@@ -283,7 +396,10 @@ export async function startRehearsal({ port = 5180 } = {}) {
       player: submissionLink(origin, members.player, linkSecret, season),
       rival: submissionLink(origin, members.rival, linkSecret, season),
       admin: submissionLink(origin, members.admin, linkSecret, season),
+      receipt: `${origin}/receipts/${receiptExamples.receipt.id}`,
+      pendingReceipt: `${origin}/receipts/${receiptExamples.pendingReceipt.id}`,
     };
+    await seedReceipts(db, runtime, links.admin, season);
     return {
       origin,
       directory,

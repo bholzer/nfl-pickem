@@ -3,7 +3,7 @@ import {
   introspectWorkflow,
   introspectWorkflowInstance,
 } from "cloudflare:test";
-import { describe, expect, it, onTestFinished, vi } from "vitest";
+import { assert, describe, expect, it, onTestFinished, vi } from "vitest";
 import {
   ensureTokenUser,
   saveSubmission,
@@ -18,6 +18,7 @@ import {
 } from "../../src/server/jobs/store";
 import {
   renderHashes,
+  renderStandings,
   splitDiscordMessage,
 } from "../../src/server/services/discord";
 import { normalizeScoreboard } from "../../src/server/services/espn";
@@ -26,6 +27,13 @@ import { PickemWorkflow } from "../../src/server/workflows";
 import type { Env } from "../../src/server/env";
 import type { JobParams } from "../../src/shared/contracts";
 
+import {
+  freezeHashPublication,
+  getFrozenReceipt,
+  sendHashPublicationPart,
+  winnerReceiptLinks,
+} from "../../src/server/receipts";
+import { calculateStandings } from "../../src/server/services/scoring";
 type InterceptState = {
   scoreboard: {
     season: { year: number; type: number };
@@ -44,6 +52,13 @@ async function discordResponse(
   url: URL,
   state: InterceptState,
 ) {
+  if (
+    url.origin === "https://discord.com" &&
+    request.method === "GET" &&
+    url.pathname === "/api/v10/channels/9999"
+  ) {
+    return Response.json({ id: "9999", guild_id: "6666" });
+  }
   if (url.origin !== "https://discord.com" || request.method !== "POST") {
     throw new Error(`Unexpected outbound ${request.url}`);
   }
@@ -86,7 +101,10 @@ async function discordMessageResponse(
     );
   }
   state.messages.push({ channel, content });
-  return Response.json({ id: "7777" });
+  return Response.json({
+    id: String(7776 + state.messages.length),
+    channel_id: channel,
+  });
 }
 
 function intercept(initial = espnScoreboard()) {
@@ -491,7 +509,7 @@ describe("native PickemWorkflow", () => {
       tiebreaker: 50,
       locked: false,
     });
-    const expected = await renderHashes(
+    const { message: expected } = await renderHashes(
       await listWeekSubmissions(env.DB, { season: 2026, week: 1 }),
       normalizeScoreboard(scoreboard),
     );
@@ -505,7 +523,7 @@ describe("native PickemWorkflow", () => {
       espnEvent({ date: new Date(Date.now() - 3600_000).toISOString() }),
     ]);
     const sent = intercept(scoreboard);
-    const expected = await renderHashes(
+    const { message: expected } = await renderHashes(
       await listWeekSubmissions(env.DB, { season: 2026, week: 1 }),
       normalizeScoreboard(scoreboard),
     );
@@ -565,10 +583,12 @@ describe("native PickemWorkflow", () => {
     expect(sent.messages).toEqual([
       {
         channel: "9999",
-        content: await renderHashes(
-          await listWeekSubmissions(env.DB, { season: 2026, week: 1 }),
-          normalizeScoreboard(sent.scoreboard),
-        ),
+        content: (
+          await renderHashes(
+            await listWeekSubmissions(env.DB, { season: 2026, week: 1 }),
+            normalizeScoreboard(sent.scoreboard),
+          )
+        ).message,
       },
     ]);
     expect(await getRun(env.DB, id)).toMatchObject({ status: "superseded" });
@@ -854,10 +874,12 @@ describe("native PickemWorkflow", () => {
     }
     const sent = intercept();
     const expected = splitDiscordMessage(
-      await renderHashes(
-        await listWeekSubmissions(env.DB, { season: 2026, week: 1 }),
-        normalizeScoreboard(sent.scoreboard),
-      ),
+      (
+        await renderHashes(
+          await listWeekSubmissions(env.DB, { season: 2026, week: 1 }),
+          normalizeScoreboard(sent.scoreboard),
+        )
+      ).message,
     );
     expect(expected.length).toBeGreaterThan(1);
     let requests = 0;
@@ -878,6 +900,24 @@ describe("native PickemWorkflow", () => {
     } finally {
       await failed.dispose();
     }
+    const frozen = await env.DB.prepare(
+      "SELECT id,part_index,verification_hash,summary FROM hash_receipts",
+    ).all<{
+      id: string;
+      part_index: number;
+      verification_hash: string;
+      summary: string;
+    }>();
+    expect(frozen.results).toHaveLength(36);
+    for (const receipt of frozen.results) {
+      expect(expected[receipt.part_index]).toContain(receipt.verification_hash);
+      const persisted = await getFrozenReceipt(env.DB, receipt.id);
+      expect(persisted?.originalMessageUrl).toBe(
+        receipt.part_index === 0
+          ? "https://discord.com/channels/6666/9999/7777"
+          : null,
+      );
+    }
     await saveSubmission(env.DB, {
       userId: user.id,
       season: 2026,
@@ -894,6 +934,12 @@ describe("native PickemWorkflow", () => {
       await trace.dispose();
     }
     expect(sent.messages.map((item) => item.content)).toEqual(expected);
+    for (const receipt of frozen.results) {
+      expect(await getFrozenReceipt(env.DB, receipt.id)).toMatchObject({
+        summary: receipt.summary,
+        originalMessageUrl: `https://discord.com/channels/6666/9999/${7777 + receipt.part_index}`,
+      });
+    }
     await expect(controlRun(env, original.id, "retry")).rejects.toMatchObject({
       status: 409,
     });
@@ -916,6 +962,183 @@ describe("native PickemWorkflow", () => {
         .bind(id)
         .all(),
     ).toMatchObject({ results: [{ status: "suppressed" }] });
+  });
+});
+
+describe("durable hash receipts", () => {
+  it("atomically chooses one complete snapshot when builders race across a submission update", async () => {
+    const user = await seed();
+    const sent = intercept(
+      espnScoreboard([espnEvent(), espnEvent({ id: "402" })]),
+    );
+    let began!: () => void;
+    const started = new Promise<void>((resolve) => {
+      began = resolve;
+    });
+    let unblock!: () => void;
+    const release = new Promise<void>((resolve) => {
+      unblock = resolve;
+    });
+    sent.beforeScoreboard = async () => {
+      sent.beforeScoreboard = null;
+      began();
+      await release;
+    };
+    const first = freezeHashPublication(env, "race:hash", {
+      season: 2026,
+      week: 1,
+    });
+    await started;
+    await saveSubmission(env.DB, {
+      userId: user.id,
+      season: 2026,
+      week: 1,
+      picks: { "401": "away-401" },
+      tiebreaker: 99,
+      locked: false,
+    });
+    const second = await freezeHashPublication(env, "race:hash", {
+      season: 2026,
+      week: 1,
+    });
+    unblock();
+    expect(await first).toEqual(second);
+    const rows = await env.DB.prepare("SELECT id FROM hash_receipts").all<{
+      id: string;
+    }>();
+    expect(rows.results).toHaveLength(1);
+    const row = rows.results[0];
+    assert(row);
+    const receipt = await getFrozenReceipt(env.DB, row.id);
+    assert(receipt);
+    expect(receipt.summary).toContain("Tiebreaker: 99");
+    expect(receipt.gameIds).toEqual(["401", "402"]);
+    expect(second.message).toContain(receipt.verificationHash);
+    expect(receipt.originalMessageUrl).toBeNull();
+  });
+
+  it("rolls back the raw message and publication when receipt persistence fails", async () => {
+    await seed();
+    intercept();
+    await env.DB.prepare(
+      `CREATE TRIGGER reject_receipt BEFORE INSERT ON hash_receipts
+      BEGIN SELECT RAISE(ABORT, 'Injected receipt persistence failure'); END`,
+    ).run();
+    await expect(
+      freezeHashPublication(env, "rollback:hash", { season: 2026, week: 1 }),
+    ).rejects.toThrow();
+    expect(
+      await env.DB.prepare(
+        "SELECT key FROM job_messages WHERE key='rollback:hash'",
+      ).first(),
+    ).toBeNull();
+    expect(
+      await env.DB.prepare(
+        "SELECT id FROM hash_publications WHERE snapshot_key='rollback:hash'",
+      ).first(),
+    ).toBeNull();
+  });
+
+  it("replays legacy frozen messages without looking up metadata or manufacturing receipts", async () => {
+    await env.DB.prepare(
+      "INSERT INTO job_messages(key,message,expires_at) VALUES(?,?,?)",
+    )
+      .bind("legacy:hash", "Original locked hash text", Number.MAX_SAFE_INTEGER)
+      .run();
+    const sent = intercept();
+    const publication = await freezeHashPublication(env, "legacy:hash", {
+      season: 2026,
+      week: 1,
+    });
+    expect(publication).toEqual({
+      id: null,
+      channelId: null,
+      message: "Original locked hash text",
+    });
+    await sendHashPublicationPart(env, publication, 0, publication.message);
+    expect(sent.messages).toEqual([
+      { channel: "9999", content: "Original locked hash text" },
+    ]);
+    expect(
+      await env.DB.prepare(
+        "SELECT COUNT(*) AS count FROM hash_receipts",
+      ).first<number>("count"),
+    ).toBe(0);
+    expect(vi.mocked(fetch).mock.calls).toHaveLength(1);
+  });
+
+  it("reuses a recorded remote success and the frozen destination after a checkpoint failure", async () => {
+    await seed();
+    const sent = intercept();
+    const publication = await freezeHashPublication(env, "recorded:hash", {
+      season: 2026,
+      week: 1,
+    });
+    const changedEnv = { ...env, DISCORD_CHANNEL_ID: "1234" };
+    const cached = await freezeHashPublication(changedEnv, "recorded:hash", {
+      season: 2026,
+      week: 1,
+    });
+    expect(cached).toEqual(publication);
+    await sendHashPublicationPart(changedEnv, cached, 0, cached.message);
+    // Re-enter the send callback as native step replay does when its later effect
+    // or checkpoint commit fails. The separately recorded POST is authoritative.
+    await sendHashPublicationPart(changedEnv, cached, 0, cached.message);
+    expect(sent.messages).toEqual([
+      { channel: "9999", content: publication.message },
+    ]);
+    const receiptId = await env.DB.prepare(
+      "SELECT id FROM hash_receipts",
+    ).first<string>("id");
+    assert(receiptId);
+    expect(await getFrozenReceipt(env.DB, receiptId)).toMatchObject({
+      originalMessageUrl: "https://discord.com/channels/6666/9999/7777",
+    });
+  });
+
+  it("links the earliest published winner receipt in its exact period, never an unpublished rehash", async () => {
+    await seed();
+    const sent = intercept(
+      espnScoreboard([espnEvent({ status: "STATUS_FINAL" })]),
+    );
+    const period = { season: 2026, week: 1 };
+    const standings = calculateStandings(
+      await listWeekSubmissions(env.DB, period),
+      normalizeScoreboard(sent.scoreboard),
+    );
+    const unpublished = await freezeHashPublication(
+      env,
+      "unpublished:hash",
+      period,
+    );
+    expect(await winnerReceiptLinks(env, period, standings)).toEqual(new Map());
+    const original = await freezeHashPublication(env, "original:hash", period);
+    await sendHashPublicationPart(env, original, 0, original.message);
+    const links = await winnerReceiptLinks(env, period, standings);
+    const receiptId = await env.DB.prepare(
+      "SELECT id FROM hash_receipts WHERE publication_id=?",
+    )
+      .bind(original.id)
+      .first<string>("id");
+    assert(receiptId);
+    const announcement = renderStandings(standings, period, links);
+    expect(announcement).toContain(
+      `[View receipt](${env.APP_ORIGIN}/receipts/${receiptId})`,
+    );
+    expect(announcement).toContain(
+      "[Original hash message](https://discord.com/channels/6666/9999/7777)",
+    );
+    expect([...links.values()]).toEqual([
+      {
+        url: `${env.APP_ORIGIN}/receipts/${receiptId}`,
+        originalMessageUrl: "https://discord.com/channels/6666/9999/7777",
+      },
+    ]);
+    await sendHashPublicationPart(env, unpublished, 0, unpublished.message);
+    expect(await winnerReceiptLinks(env, period, standings)).toEqual(links);
+    expect(
+      await winnerReceiptLinks(env, { season: 2025, week: 1 }, standings),
+    ).toEqual(new Map());
   });
 });
 

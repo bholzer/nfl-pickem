@@ -95,6 +95,17 @@ export interface SubmissionDetail {
   verificationHash: string;
 }
 
+interface ReceiptInfo extends SeasonWeek {
+  id: string;
+  username: string | null;
+  verificationHash: string;
+  snapshotAt: string;
+  originalMessageUrl: string;
+}
+
+export type PublicReceipt = ReceiptInfo &
+  ({ status: "pending" } | { status: "available"; summary: string });
+
 export interface WeekData {
   scoreboard: Scoreboard;
   submission: Submission | null;

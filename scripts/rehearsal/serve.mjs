@@ -19,6 +19,8 @@ try {
   );
   console.log(`Player link: ${rehearsal.links.player}`);
   console.log(`Admin link: ${rehearsal.links.admin}`);
+  console.log(`Winner receipt (synthetic): ${rehearsal.links.receipt}`);
+  console.log(`Pending receipt (synthetic): ${rehearsal.links.pendingReceipt}`);
   console.log(
     "Stop with SIGINT/SIGTERM to remove temporary state. Never use a production credential here.",
   );

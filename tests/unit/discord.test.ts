@@ -11,6 +11,7 @@ import type {
 } from "../../src/shared/contracts";
 import {
   DiscordError,
+  getChannelDestination,
   renderHashes,
   renderStandings,
   sendChannelMessage,
@@ -144,6 +145,34 @@ describe("Discord approval boundary", () => {
     expect(outbound).not.toHaveBeenCalled();
   });
 
+  it("requires an approved real server channel before receipt publication", async () => {
+    const outbound = vi.spyOn(globalThis, "fetch");
+    await expect(
+      getChannelDestination(
+        config({ DISCORD_ALLOWED_CHANNEL_IDS: "" }),
+        channelId,
+      ),
+    ).rejects.toMatchObject({ retryable: false });
+    expect(outbound).not.toHaveBeenCalled();
+    network.use(
+      http.get(`${api}/channels/${channelId}`, () =>
+        HttpResponse.json({ id: channelId, type: 1 }),
+      ),
+    );
+    await expect(
+      getChannelDestination(config(), channelId),
+    ).rejects.toMatchObject({ retryable: false });
+    network.use(
+      http.get(`${api}/channels/${channelId}`, () =>
+        HttpResponse.json({ id: channelId, guild_id: "555555555555555555" }),
+      ),
+    );
+    expect(await getChannelDestination(config(), channelId)).toEqual({
+      channelId,
+      guildId: "555555555555555555",
+    });
+  });
+
   it("permits only the approved recipient's newly created DM channel", async () => {
     const requests: Array<{
       path: string;
@@ -161,7 +190,7 @@ describe("Discord approval boundary", () => {
         return HttpResponse.json(
           path.endsWith("/@me/channels")
             ? { id: dmId, type: 1, recipients: [{ id: recipient }] }
-            : { id: "444444444444444444" },
+            : { id: "444444444444444444", channel_id: dmId },
         );
       }),
     );
@@ -232,7 +261,10 @@ describe("Discord approval boundary", () => {
         `${api}/channels/${channelId}/messages`,
         async ({ request }) => {
           contents.push(await request.json());
-          return HttpResponse.json({ id: "444444444444444444" });
+          return HttpResponse.json({
+            id: "444444444444444444",
+            channel_id: channelId,
+          });
         },
       ),
     );
@@ -399,7 +431,10 @@ describe("Discord content", () => {
       ),
       http.post(`${api}/channels/${dmId}/messages`, async ({ request }) => {
         message = ((await request.json()) as { content: string }).content;
-        return HttpResponse.json({ id: "444444444444444444" });
+        return HttpResponse.json({
+          id: "444444444444444444",
+          channel_id: dmId,
+        });
       }),
     );
     await sendSubmissionLink(config(), user, scoreboard);
@@ -481,18 +516,25 @@ describe("Discord content", () => {
     const summary =
       "Alice\nChiefs at Bills: Kansas City Chiefs\nBears at Packers: Green Bay Packers\nTiebreaker: 42";
     const digest = createHash("sha256").update(summary).digest("hex");
-    expect(await renderHashes([submission], scoreboard)).toContain(digest);
+    const rendered = await renderHashes([submission], scoreboard);
+    expect(rendered.message).toContain(digest);
+    expect(rendered.receipts[0]).toMatchObject({
+      summary,
+      verificationHash: digest,
+    });
     expect(
-      await renderHashes([{ ...submission, season: 2025 }], {
-        ...scoreboard,
-        season: 2025,
-      }),
+      (
+        await renderHashes([{ ...submission, season: 2025 }], {
+          ...scoreboard,
+          season: 2025,
+        })
+      ).message,
     ).toContain(digest);
     const changed = await renderHashes(
       [{ ...submission, tiebreaker: 43 }],
       scoreboard,
     );
-    expect(changed).not.toContain(digest);
+    expect(changed.message).not.toContain(digest);
   });
 
   it("rejects empty reports instead of marking missing work delivered", async () => {
@@ -517,7 +559,7 @@ describe("Discord content", () => {
       id: index + 1,
       user: { ...user, username: `Player ${index + 1}` },
     }));
-    const rendered = await renderHashes(submissions, scoreboard);
+    const { message: rendered } = await renderHashes(submissions, scoreboard);
     const parts = splitDiscordMessage(rendered);
     expect(parts.length).toBeGreaterThan(1);
     expect(parts.every((part) => part.length <= 2_000)).toBe(true);
@@ -534,7 +576,10 @@ describe("Discord content", () => {
         `${api}/channels/${channelId}/messages`,
         async ({ request }) => {
           sent.push(((await request.json()) as { content: string }).content);
-          return HttpResponse.json({ id: "444444444444444444" });
+          return HttpResponse.json({
+            id: "444444444444444444",
+            channel_id: channelId,
+          });
         },
       ),
     );
@@ -562,7 +607,10 @@ describe("Discord content", () => {
           );
           return received.length === 2
             ? HttpResponse.json({}, { status: 503 })
-            : HttpResponse.json({ id: "444444444444444444" });
+            : HttpResponse.json({
+                id: "444444444444444444",
+                channel_id: channelId,
+              });
         },
       ),
     );

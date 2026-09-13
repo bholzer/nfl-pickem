@@ -49,9 +49,13 @@ export async function verificationHash(
   submission: SubmissionWithUser,
   scoreboard: Scoreboard,
 ): Promise<string> {
+  return summaryHash(submissionSummary(submission, scoreboard));
+}
+
+export async function summaryHash(summary: string): Promise<string> {
   const digest = await crypto.subtle.digest(
     "SHA-256",
-    new TextEncoder().encode(submissionSummary(submission, scoreboard)),
+    new TextEncoder().encode(summary),
   );
   return Array.from(new Uint8Array(digest), (byte) =>
     byte.toString(16).padStart(2, "0"),

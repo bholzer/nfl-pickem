@@ -22,6 +22,7 @@ import {
 import { JobDetailPage, JobsPage } from "./jobs";
 import { clearDraftsForUser, clearExpiredDrafts } from "./drafts";
 import { DashboardPage } from "./dashboard";
+import { ReceiptPage } from "./receipts";
 
 function AccountMenu({ query }: { query: string }) {
   const session = useSession();
@@ -317,6 +318,7 @@ export function App() {
         <Route element={<Layout />}>
           <Route index element={<Home />} />
           <Route path="sign_in" element={<SignIn />} />
+          <Route path="receipts/:id" element={<ReceiptPage />} />
           <Route element={<Protected />}>
             <Route path="standings" element={<StandingsPage />} />
             <Route path="submissions" element={<HistoryPage />} />

@@ -18,7 +18,6 @@ import { calculateStandings, earliestGameTime } from "./services/scoring";
 import { completedGroups } from "./services/groups";
 import {
   DiscordError,
-  renderHashes,
   renderStandings,
   sendChannelMessage,
   sendSubmissionLink,
@@ -41,6 +40,11 @@ import {
   setStatus,
   terminal,
 } from "./jobs/store";
+import {
+  freezeHashPublication,
+  sendHashPublicationPart,
+  winnerReceiptLinks,
+} from "./receipts";
 
 const ioRetry = {
   retries: { limit: 4, delay: "5 seconds", backoff: "exponential" },
@@ -120,7 +124,7 @@ async function linkWeekOffset(params: JobParams, current: SeasonWeek) {
 type Delivery = {
   id: string;
   key: string;
-  send: () => Promise<void>;
+  send: () => Promise<unknown>;
   beforeSend?: () => Promise<"ready" | "busy" | "suppressed">;
   suppressionTtl?: number | null;
 };
@@ -300,26 +304,27 @@ export class PickemWorkflow extends WorkflowEntrypoint<Env, JobParams> {
       return;
     }
     // This persisted read deliberately happens after the durable kickoff sleep.
-    const message = await step.do("read hashes at delivery", ioRetry, () =>
-      deliveryMessage(this.env.DB, `${scope}:hash`, async () => {
-        const submissions = await listWeekSubmissions(this.env.DB, period);
-        const scoreboard = await fetchScoreboard(period);
+    const publication = await step.do(
+      "read hash publication at delivery",
+      ioRetry,
+      async () => {
         try {
-          return await renderHashes(submissions, scoreboard);
+          return await freezeHashPublication(this.env, `${scope}:hash`, period);
         } catch (error) {
           if (error instanceof DiscordError && !error.retryable) {
             throw new NonRetryableError(errorMessage(error));
           }
           throw error;
         }
-      }),
+      },
     );
-    for (const [index, part] of splitDiscordMessage(message).entries()) {
+    for (const [index, part] of splitDiscordMessage(
+      publication.message,
+    ).entries()) {
       await this.deliver(step, `hash part ${index}`, {
         id,
         key: `${scope}:hash:${index}`,
-        send: () =>
-          sendChannelMessage(this.env, this.env.DISCORD_CHANNEL_ID, part),
+        send: () => sendHashPublicationPart(this.env, publication, index, part),
       });
     }
   }
@@ -505,7 +510,11 @@ export class PickemWorkflow extends WorkflowEntrypoint<Env, JobParams> {
           try {
             return JSON.stringify({
               winner: standings.some((item) => item.winner),
-              message: renderStandings(standings, period),
+              message: renderStandings(
+                standings,
+                period,
+                await winnerReceiptLinks(this.env, period, standings),
+              ),
             });
           } catch (error) {
             if (error instanceof DiscordError && !error.retryable) {
