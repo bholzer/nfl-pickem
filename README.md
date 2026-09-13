@@ -289,8 +289,45 @@ Do not run local cloud operations concurrently. First provisioning/publication,
 breaking migrations, domain or Workflow configuration changes, and deliberate
 delivery activation remain operator tasks below. Staging and production are
 initialized, with their D1 IDs and approved custom domains recorded in
-`wrangler.jsonc`. Production was initialized with a fresh pool and delivery paused;
-Discord sends and native schedules remain disabled pending separate approval.
+`wrangler.jsonc`. Production messaging and native schedules were activated with
+operator approval on **2026-09-13 UTC**. Staging delivery remains disabled.
+
+### Production delivery
+
+Production uses **Corn Town Fantasy Football → #pick-em**
+(`1420809438138466364`). `DISCORD_SEND_ENABLED` and `SCHEDULES_ENABLED` are true,
+and application global delivery is unpaused. The six native Workflow schedules
+are registered on `nfl-pickem-production-jobs`; there are no duplicate Worker crons.
+
+| Delivery | Native schedule (UTC) |
+| --- | --- |
+| Weekly personal pick links | Tuesday at 13:00 |
+| Hash scheduling, followed by the durable kickoff wait | Thursday at 14:00 |
+| Standings checks | Every 15 minutes, Friday 02:00–04:45 |
+| Standings checks | Every 15 minutes, Sunday 20:00–23:45 |
+| Standings checks | Every 15 minutes, Monday 00:00–05:45 |
+| Standings checks | Every 15 minutes, Tuesday 02:00–04:45 |
+
+Standings checks publish only when the existing completed-group and winner
+suppression rules permit. UTC schedules do not shift with daylight saving time.
+Keep these production settings in the source configuration used for future
+releases; routine version deployments preserve registered native schedules but
+still replace application variables.
+
+The pool remains fresh: activation imported no historical users or submissions
+and created no synthetic picks. Its initial recipient is the `beanandcookies`
+administrator. Link jobs enumerate registered D1 users with Discord IDs, not all
+server members. New participants need approved registration or a season/week
+submission link before ordinary Discord sign-in and automated delivery can include
+them. Recipient/channel allowlists are enforced outside production; production
+uses the registered pool and its configured channel.
+
+Activation verification included a real 2026 Week 1 link job, its successful
+native Workflow and D1 delivery record, Discord readback, and opening the delivered
+production link without submitting picks. The pre-migration private backup was
+restored in memory and checked against every table and autoincrement high-water
+mark. Backup and release evidence are retained outside the checkout under
+`~/.config/nfl-pickem/backups/production-activation-65zgnr/`.
 
 ### Routine migrations
 
