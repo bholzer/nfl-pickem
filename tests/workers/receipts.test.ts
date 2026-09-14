@@ -132,7 +132,6 @@ describe("public winner receipts", () => {
       verificationHash: receipt.verificationHash,
       snapshotAt: receipt.snapshotAt,
       originalMessageUrl: receipt.originalMessageUrl,
-      status: "available",
       summary: receipt.summary,
     });
     expect(response.headers.get("Cache-Control")).toBe("no-store");
@@ -148,7 +147,7 @@ describe("public winner receipts", () => {
     }
   });
 
-  it("keeps an early winner's picks and tiebreaker secret until every current game is final", async () => {
+  it("reveals the exact receipt once a winner clinches with another game still live", async () => {
     const winner = await createSubmission();
     await createSubmission("222222222222222222", {
       "401": "away-401",
@@ -157,36 +156,46 @@ describe("public winner receipts", () => {
     const receipt = await freezeReceipt(winner);
     const fetch = mockScoreboard(
       espnScoreboard([
+        espnEvent({ id: "401", status: "STATUS_IN_PROGRESS" }),
+        espnEvent({ id: "402", status: "STATUS_IN_PROGRESS" }),
+      ]),
+    );
+
+    expect((await requestReceipt(receipt.id)).status).toBe(404);
+
+    fetch.mockResolvedValue(
+      Response.json(
+        espnScoreboard([
+          espnEvent({ id: "401", status: "STATUS_FINAL" }),
+          espnEvent({ id: "402", status: "STATUS_IN_PROGRESS" }),
+        ]),
+      ),
+    );
+    const response = await requestReceipt(receipt.id);
+    expect(response.status).toBe(200);
+    const data = await response.json<PublicReceipt>();
+    expect(data.summary).toBe(receipt.summary);
+    expect(data.summary).toContain("Tiebreaker: 913");
+    expect(data.verificationHash).toBe(receipt.verificationHash);
+  });
+
+  it("does not reveal a current leader while another player can still tie", async () => {
+    const leader = await createSubmission();
+    await createSubmission("222222222222222222", {
+      "401": "away-401",
+      "402": "away-402",
+    });
+    const receipt = await freezeReceipt(leader);
+    mockScoreboard(
+      espnScoreboard([
         espnEvent({ id: "401", status: "STATUS_FINAL" }),
         espnEvent({ id: "402", status: "STATUS_IN_PROGRESS" }),
       ]),
     );
 
     const response = await requestReceipt(receipt.id);
-    expect(response.status).toBe(200);
-    const data = await response.json<PublicReceipt>();
-    expect(data.status).toBe("pending");
-    expect(Object.keys(data).sort()).toEqual([
-      "id",
-      "originalMessageUrl",
-      "season",
-      "snapshotAt",
-      "status",
-      "username",
-      "verificationHash",
-      "week",
-    ]);
-    expect(JSON.stringify(data)).not.toContain("Tiebreaker");
-    expect(JSON.stringify(data)).not.toContain("home-402");
-
-    fetch.mockResolvedValue(Response.json(finalBoard()));
-    const revealed = await (
-      await requestReceipt(receipt.id)
-    ).json<PublicReceipt>();
-    expect(revealed).toMatchObject({
-      status: "available",
-      summary: receipt.summary,
-    });
+    expect(response.status).toBe(404);
+    expect(await response.json()).not.toHaveProperty("summary");
   });
 
   it("does not expose known IDs for nonwinners or unconfirmed publications", async () => {
@@ -230,7 +239,7 @@ describe("public winner receipts", () => {
     expect((await requestReceipt(emptySnapshot.id)).status).toBe(404);
   });
 
-  it("waits for an additional current game even when all snapshotted games are final", async () => {
+  it("reveals a clinched winner's receipt even with an additional scheduled game", async () => {
     const receipt = await freezeReceipt(await createSubmission());
     mockScoreboard(
       espnScoreboard([
@@ -241,8 +250,7 @@ describe("public winner receipts", () => {
     const response = await requestReceipt(receipt.id);
     expect(response.status).toBe(200);
     const data = await response.json<PublicReceipt>();
-    expect(data.status).toBe("pending");
-    expect(data).not.toHaveProperty("summary");
+    expect(data.summary).toBe(receipt.summary);
   });
 
   it("ignores conflicting query periods and preserves frozen text despite name, picks and ESPN drift", async () => {
@@ -280,7 +288,6 @@ describe("public winner receipts", () => {
     expect(response.status).toBe(200);
     const data = await response.json<PublicReceipt>();
     expect(data).toMatchObject({
-      status: "available",
       season: 2026,
       week: 1,
       username: receipt.username,

@@ -209,7 +209,7 @@ apiRoutes.get("/receipts/:id", async (c) => {
   if (!winner) {
     return c.json({ error: "Receipt not found" }, 404);
   }
-  const metadata = {
+  const result: PublicReceipt = {
     id: receipt.id,
     season: receipt.season,
     week: receipt.week,
@@ -217,12 +217,8 @@ apiRoutes.get("/receipts/:id", async (c) => {
     verificationHash: receipt.verificationHash,
     snapshotAt: receipt.snapshotAt,
     originalMessageUrl: receipt.originalMessageUrl,
+    summary: receipt.summary,
   };
-  const result: PublicReceipt = scoreboard.games.every(
-    (game) => game.status === "STATUS_FINAL",
-  )
-    ? { ...metadata, status: "available", summary: receipt.summary }
-    : { ...metadata, status: "pending" };
   return c.json(result);
 });
 

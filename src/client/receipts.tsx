@@ -93,13 +93,7 @@ function ReceiptBody({ summary }: { summary: string }) {
   );
 }
 
-function ReceiptView({
-  receipt,
-  refresh,
-}: {
-  receipt: PublicReceipt;
-  refresh: () => void;
-}) {
+function ReceiptView({ receipt }: { receipt: PublicReceipt }) {
   return (
     <div className="mx-auto max-w-[760px] min-w-0 space-y-6 [overflow-wrap:anywhere]">
       <PageHeading
@@ -131,26 +125,7 @@ function ReceiptView({
           submission before kickoff.
         </p>
       </section>
-      {receipt.status === "pending" ? (
-        <section
-          className="panel space-y-4"
-          aria-labelledby="receipt-pending-heading"
-        >
-          <h2 id="receipt-pending-heading" className="text-lg font-semibold">
-            Receipt pending
-          </h2>
-          <p role="status">
-            The original receipt, including picks and tiebreaker, becomes
-            available after all games in this week are final. It is not shared
-            while games remain unfinished.
-          </p>
-          <button type="button" className="button secondary" onClick={refresh}>
-            Refresh receipt
-          </button>
-        </section>
-      ) : (
-        <ReceiptBody summary={receipt.summary} />
-      )}
+      <ReceiptBody summary={receipt.summary} />
     </div>
   );
 }
@@ -162,13 +137,7 @@ export function ReceiptPage() {
   );
   return (
     <ResourceView resource={resource}>
-      {(receipt) => (
-        <ReceiptView
-          key={receipt.id}
-          receipt={receipt}
-          refresh={resource.reload}
-        />
-      )}
+      {(receipt) => <ReceiptView key={receipt.id} receipt={receipt} />}
     </ResourceView>
   );
 }

@@ -15,7 +15,7 @@ import { createUpstreams, members } from "./upstreams.mjs";
  * @property {string} directory
  * @property {number} season
  * @property {number} historicalSeason
- * @property {{player: string, rival: string, admin: string, receipt: string, pendingReceipt: string}} links
+ * @property {{player: string, rival: string, admin: string, receipt: string, earlyWinnerReceipt: string}} links
  * @property {RehearsalDatabase} db
  * @property {ReturnType<typeof createUpstreams>} upstreams
  * @property {() => Promise<void>} close
@@ -28,7 +28,7 @@ const receiptExamples = {
     week: 1,
     userId: members.player.id,
   },
-  pendingReceipt: {
+  earlyWinnerReceipt: {
     id: "00000000-0000-4000-8000-000000000102",
     week: 3,
     userId: members.rival.id,
@@ -397,7 +397,7 @@ export async function startRehearsal({ port = 5180 } = {}) {
       rival: submissionLink(origin, members.rival, linkSecret, season),
       admin: submissionLink(origin, members.admin, linkSecret, season),
       receipt: `${origin}/receipts/${receiptExamples.receipt.id}`,
-      pendingReceipt: `${origin}/receipts/${receiptExamples.pendingReceipt.id}`,
+      earlyWinnerReceipt: `${origin}/receipts/${receiptExamples.earlyWinnerReceipt.id}`,
     };
     await seedReceipts(db, runtime, links.admin, season);
     return {

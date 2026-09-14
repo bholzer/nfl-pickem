@@ -32,9 +32,10 @@ it does not load `.dev.vars`, deployment secret bundles, or existing local datab
 ESPN is replaced at the outbound transport boundary. Discord calls and all
 unrecognized outbound requests are blocked. Stop the process to remove its state.
 The developer server uses port 5173; the isolated rehearsal uses port 5180.
-The rehearsal also prints public winner and pending receipt links. Their Discord
-message references are synthetic, not real publications. The winner fixture
-contains Unicode text and preserves the earlier name after a profile-name change.
+The rehearsal also prints public final-winner and early-winner receipt links.
+Their Discord message references are synthetic, not real publications. The
+final-winner fixture contains Unicode text and preserves the earlier name after
+a profile-name change.
 
 ## Corn Town interface
 
@@ -208,12 +209,13 @@ link. It uses the earliest successfully recorded publication for that submission
 and season/week, not an unpublished or later replacement hash.
 
 `/receipts/:id` and `GET /api/receipts/:id` work without sign-in for published,
-currently winning submissions. Early winners see a pending page without receipt
-text or sharing controls. The complete receipt, including the winner's tiebreaker,
-is public only after every current game is final and the scoreboard includes
-every game in the frozen snapshot. Missing coverage fails closed. Nonwinner and
-unpublished receipts remain unavailable; private submission routes and ordinary
-standings disclosure rules are unchanged.
+currently winning submissions. The complete receipt, including remaining picks
+and the winner's tiebreaker, is public as soon as the server determines a winner,
+even while games remain unfinished. The same winner flag controls Discord's
+winner announcement and receipt link; merely leading does not qualify.
+The scoreboard must include every game in the frozen snapshot. Missing coverage
+fails closed. Nonwinner and unpublished receipts remain unavailable; private
+submission routes and ordinary standings disclosure rules are unchanged.
 
 The page offers exact-text copy, a UTF-8 `receipt.txt` download, and an independent
 [CyberChef](https://gchq.github.io/CyberChef/) link with one SHA-256 operation.

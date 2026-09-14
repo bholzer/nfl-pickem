@@ -53,18 +53,20 @@ test("anonymous winner receipts preserve the original Unicode bytes for independ
   assert(input);
   expect(Buffer.from(input, "base64")).toEqual(bytes);
 
-  await page.goto(rehearsal.links.pendingReceipt);
-  await expect(
-    page.getByRole("heading", { name: "Receipt pending", exact: true }),
-  ).toBeVisible();
-  await expect(page.locator("pre")).toHaveCount(0);
+  const earlyWinner = await rehearsal.db
+    .prepare("SELECT summary FROM hash_receipts WHERE id=?")
+    .bind("00000000-0000-4000-8000-000000000102")
+    .first<{ summary: string }>();
+  assert(earlyWinner);
+  await page.goto(rehearsal.links.earlyWinnerReceipt);
+  await expect(page.locator("pre")).toHaveText(earlyWinner.summary);
   await expect(
     page.getByRole("button", { name: "Copy receipt", exact: true }),
-  ).toHaveCount(0);
+  ).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Download receipt.txt", exact: true }),
-  ).toHaveCount(0);
+  ).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Open SHA-256 in CyberChef", exact: false }),
-  ).toHaveCount(0);
+  ).toBeVisible();
 });
