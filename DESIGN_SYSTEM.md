@@ -161,6 +161,14 @@ Show full team names, optional small logos, Central-time kickoff information, an
 explicit game status. Do not display an upcoming game's placeholder zero scores.
 Group games by day and separate games with rules inside the group.
 
+Upcoming games may show ESPN moneylines beneath the team names: a quiet `ML`
+label and signed, tabular American odds in muted text, never success/error color
+or another badge. Keep the values inside the clickable team labels and include
+the full word Moneyline in each radio's accessible description. A small centered
+source line identifies the sportsbook via ESPN and notes that odds may change.
+Do not fill in missing odds or add empty placeholders. Hide moneylines once the
+game starts so they never compete with scores or imply live betting prices.
+
 A whole team-choice label is clickable, with a minimum 64px height. Keep the day
 group panel, but do not nest bordered, filled, or shadowed team cards inside it.
 Native checked radios and stronger team-name weight identify the selection.

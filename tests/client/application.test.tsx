@@ -42,6 +42,7 @@ const game = {
   name: "Bears at Packers",
   date: "2099-09-14T20:00:00Z",
   neutralSite: false,
+  moneyline: null,
   status: "STATUS_SCHEDULED",
   statusDetail: "Scheduled",
   awayTeam: {

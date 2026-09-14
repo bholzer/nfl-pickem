@@ -659,6 +659,15 @@
     margin: 0;
     font-size: 13px;
   }
+  .team-moneyline {
+    grid-column: var(--name-column);
+    grid-row: 2;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
   .team-choice input {
     grid-column: var(--choice-column);
     grid-row: 1 / span 2;

@@ -35,6 +35,7 @@ function game(id: string, status: string, minutes: number): Game {
     name: `Matchup ${id}`,
     date: new Date(now + minutes * 60_000).toISOString(),
     neutralSite: false,
+    moneyline: null,
     status,
     statusDetail:
       status === "STATUS_HALFTIME" ? "Halftime" : status.replace("STATUS_", ""),

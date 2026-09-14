@@ -74,6 +74,18 @@ function game(season, week, slot, date, completed) {
         neutralSite: slot === 2,
         status: { type },
         competitors: [away, home],
+        odds:
+          slot === 1
+            ? [
+                {
+                  provider: { name: "Synthetic sportsbook" },
+                  moneyline: {
+                    home: { close: { odds: "-135" }, open: { odds: "-155" } },
+                    away: { close: { odds: "+114" }, open: { odds: "+130" } },
+                  },
+                },
+              ]
+            : [],
       },
     ],
   };

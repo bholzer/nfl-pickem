@@ -187,6 +187,13 @@ views use Week 1 in preseason and Week 18 after the regular season.
 The competition's `neutralSite` flag selects `vs` instead of `@` in pick forms and
 compact submission details. Neutral-site games retain ESPN's nominal home/away
 assignments; picks and scoring do not change.
+The pick form shows available American moneylines beneath each team name, with
+sportsbook attribution via ESPN. These come from the same scoreboard response's
+`odds[].moneyline.home/away.close.odds` quotes, not opening lines or spread odds.
+Both sides stay with one provider; missing or malformed optional odds remain
+absent without blocking picks. Moneylines disappear once a game starts, leaving
+scores and lock status unchanged. No extra upstream requests, betting links,
+submission fields, or scoring changes are involved.
 
 `GET /api/seasons` lists the ESPN current season plus stored submission/job seasons.
 Week and standings reads accept `?season=YYYY`; omission selects the current season.

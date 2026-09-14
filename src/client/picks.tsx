@@ -308,6 +308,8 @@ function GamePick({
   onSelect: (gameId: string, teamId: string) => void;
   invalid: boolean;
 }) {
+  const moneyline = started ? null : game.moneyline;
+  const separator = game.neutralSite ? "vs" : "@";
   return (
     <fieldset
       disabled={disabled}
@@ -328,32 +330,50 @@ function GamePick({
         </span>
       </div>
       <div className="game-teams">
-        {[game.awayTeam, game.homeTeam].map((team, index) => (
-          <div key={team.id} className="contents">
-            {index === 1 && (
-              <span className="muted">{game.neutralSite ? "vs" : "@"}</span>
-            )}
-            <label
-              className={`team-choice ${index === 0 ? "team-away" : "team-home"} ${selectedTeamId === team.id ? "selected" : ""}`}
-            >
-              <input
-                id={`pick-${game.id}-${index === 0 ? "away" : "home"}`}
-                type="radio"
-                name={`pick-${game.id}`}
-                value={team.id}
-                checked={selectedTeamId === team.id}
-                onChange={() => {
-                  onSelect(game.id, team.id);
-                }}
-                aria-label={`${team.name} for ${game.name}`}
-                aria-invalid={invalid}
-                aria-describedby={invalid ? "pick-validation" : undefined}
-              />
-              <TeamDisplay team={team} fullName showScore={started} />
-            </label>
-          </div>
-        ))}
+        {(["away", "home"] as const).map((side) => {
+          const team = side === "away" ? game.awayTeam : game.homeTeam;
+          const line = moneyline ? moneyline[side] : null;
+          const oddsId = line === null ? "" : `moneyline-${game.id}-${team.id}`;
+          return (
+            <div key={team.id} className="contents">
+              {side === "home" && <span className="muted">{separator}</span>}
+              <label
+                className={`team-choice team-${side} ${selectedTeamId === team.id ? "selected" : ""}`}
+              >
+                <input
+                  id={`pick-${game.id}-${side}`}
+                  type="radio"
+                  name={`pick-${game.id}`}
+                  value={team.id}
+                  checked={selectedTeamId === team.id}
+                  onChange={() => {
+                    onSelect(game.id, team.id);
+                  }}
+                  aria-label={`${team.name} for ${game.name}`}
+                  aria-invalid={invalid}
+                  aria-describedby={
+                    `${invalid ? "pick-validation " : ""}${oddsId}` || undefined
+                  }
+                />
+                <TeamDisplay team={team} fullName showScore={started} />
+                {line !== null && (
+                  <span id={oddsId} className="team-moneyline">
+                    <span aria-hidden="true">ML </span>
+                    <span className="sr-only">Moneyline </span>
+                    {line > 0 ? `+${line}` : line}
+                  </span>
+                )}
+              </label>
+            </div>
+          );
+        })}
       </div>
+      {moneyline && (
+        <p className="muted mt-2 text-center text-xs">
+          Moneyline · {moneyline.provider ? `${moneyline.provider} via ` : ""}
+          ESPN · Subject to change
+        </p>
+      )}
     </fieldset>
   );
 }

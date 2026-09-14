@@ -94,6 +94,117 @@ it("normalizes event competition IDs, final ties and zero scores without inventi
   });
 });
 
+it("reads the latest moneylines rather than opening quotes or spread odds", () => {
+  const event = espnEvent({ neutralSite: true });
+  const board = normalizeScoreboard(
+    espnScoreboard([
+      {
+        ...event,
+        competitions: event.competitions.map((competition) => ({
+          ...competition,
+          odds: [
+            null,
+            {
+              provider: { name: "DraftKings" },
+              moneyline: {
+                home: { close: { odds: "-135" }, open: { odds: "-155" } },
+                away: { close: { odds: "+114" }, open: { odds: "+130" } },
+              },
+              pointSpread: { home: { close: { odds: "-110" } } },
+            },
+          ],
+        })),
+      },
+    ]),
+  );
+  expect(board.games[0]?.moneyline).toEqual({
+    home: -135,
+    away: 114,
+    provider: "DraftKings",
+  });
+});
+
+it("keeps partial moneylines with their provider without filling from another market", () => {
+  const event = espnEvent();
+  const board = normalizeScoreboard(
+    espnScoreboard([
+      {
+        ...event,
+        competitions: event.competitions.map((competition) => ({
+          ...competition,
+          odds: [
+            {
+              provider: { name: "First book" },
+              moneyline: {
+                home: { close: { odds: "OFF" }, open: { odds: "-120" } },
+                away: { close: { odds: "+100" } },
+              },
+            },
+            {
+              provider: { name: "Second book" },
+              moneyline: {
+                home: { close: { odds: "-200" } },
+                away: { close: { odds: "+160" } },
+              },
+            },
+          ],
+        })),
+      },
+    ]),
+  );
+  expect(board.games[0]?.moneyline).toEqual({
+    home: null,
+    away: 100,
+    provider: "First book",
+  });
+});
+
+it.each([
+  { name: "absent", odds: undefined },
+  { name: "malformed", odds: { moneyline: [] } },
+  {
+    name: "opening-only",
+    odds: [{ moneyline: { home: { open: { odds: "-150" } } } }],
+  },
+  {
+    name: "invalid American odds",
+    odds: [
+      {
+        moneyline: {
+          home: { close: { odds: "0" } },
+          away: { close: { odds: "-110.5" } },
+        },
+      },
+      {
+        moneyline: {
+          home: { close: { odds: "9007199254740992" } },
+          away: { close: { odds: "+99" } },
+        },
+      },
+    ],
+  },
+])("keeps games usable when optional moneylines are $name", ({ odds }) => {
+  const event = espnEvent();
+  const board = normalizeScoreboard(
+    espnScoreboard([
+      {
+        ...event,
+        competitions: event.competitions.map((competition) => ({
+          ...competition,
+          odds,
+        })),
+      },
+    ]),
+  );
+  expect(board.games[0]).toMatchObject({
+    id: "401",
+    status: "STATUS_SCHEDULED",
+    homeTeam: { id: "home-401" },
+    awayTeam: { id: "away-401" },
+    moneyline: null,
+  });
+});
+
 const invalidBoards: Array<[string, () => unknown]> = [
   ["missing season", () => ({ week: { number: 1 }, events: [espnEvent()] })],
   [

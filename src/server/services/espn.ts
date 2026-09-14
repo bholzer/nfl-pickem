@@ -17,11 +17,18 @@ export class EspnError extends Error {
   }
 }
 
+function optionalObject(value: unknown): Record<string, unknown> | null {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
 function object(value: unknown): Record<string, unknown> {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+  const result = optionalObject(value);
+  if (!result) {
     throw new EspnError("ESPN returned an invalid object");
   }
-  return value as Record<string, unknown>;
+  return result;
 }
 
 function text(value: unknown): string {
@@ -164,6 +171,48 @@ function validateGamePeriod(
   }
 }
 
+function closingMoneyline(value: unknown): number | null {
+  const quote = optionalObject(optionalObject(value)?.close)?.odds;
+  if (typeof quote !== "string" || !/^[+-]?\d+$/.test(quote)) {
+    return null;
+  }
+  const odds = Number(quote);
+  return Number.isSafeInteger(odds) && Math.abs(odds) >= 100 ? odds : null;
+}
+
+function moneyline(value: unknown): Game["moneyline"] {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+  for (const entry of value) {
+    const odds = optionalObject(entry);
+    if (!odds) {
+      continue;
+    }
+    const lines = optionalObject(odds.moneyline);
+    if (!lines) {
+      continue;
+    }
+    // ESPN's close quote is its latest line; never substitute opening odds.
+    const home = closingMoneyline(lines.home);
+    const away = closingMoneyline(lines.away);
+    if (home === null && away === null) {
+      continue;
+    }
+    const provider = optionalObject(odds.provider)?.name;
+    // Keep both sides from one provider, including a missing side.
+    return {
+      home,
+      away,
+      provider:
+        typeof provider === "string" && provider.trim()
+          ? provider.trim()
+          : null,
+    };
+  }
+  return null;
+}
+
 function normalizeGame(
   raw: unknown,
   ids: Set<string>,
@@ -204,6 +253,7 @@ function normalizeGame(
     neutralSite: competition.neutralSite === true,
     status: statusName,
     statusDetail: text(status.detail),
+    moneyline: moneyline(competition.odds),
     ...teams,
   };
 }

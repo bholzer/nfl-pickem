@@ -49,6 +49,11 @@ export interface Game {
   homeTeam: Team;
   awayTeam: Team;
   winnerId: string | null;
+  moneyline: {
+    home: number | null;
+    away: number | null;
+    provider: string | null;
+  } | null;
 }
 
 export interface Scoreboard extends SeasonWeek {
