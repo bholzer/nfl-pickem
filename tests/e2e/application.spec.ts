@@ -267,6 +267,115 @@ test("historical IDs and same-week season switching keep archived picks and stan
   ).toBeEnabled();
 });
 
+test("season totals rank archived weeks from frozen boards and fit every navigation width", async ({
+  page,
+  rehearsal,
+}, testInfo) => {
+  await page.goto(rehearsal.links.player);
+  await expect(
+    page.getByRole("heading", { name: "Make your picks", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "Season", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Season", exact: true }),
+  ).toBeVisible();
+  await expect(page).toHaveURL(
+    (url) =>
+      url.pathname === "/season" &&
+      url.searchParams.get("season") === String(rehearsal.season) &&
+      url.searchParams.get("week") === "2",
+  );
+  await page.getByRole("combobox", { name: "Season", exact: true }).click();
+  await page
+    .getByRole("option", {
+      name: `${rehearsal.historicalSeason} season`,
+      exact: true,
+    })
+    .click();
+  const table = page.getByRole("table", {
+    name: `${rehearsal.historicalSeason} season standings`,
+    exact: true,
+  });
+  await expect(table).toBeVisible();
+  // Rank, Correct, Wins, Played, Accuracy, Best, Worst, Avg.
+  await expect(
+    table
+      .getByRole("row")
+      .filter({
+        has: page.getByRole("rowheader", { name: /^Rehearsal Rival\b/ }),
+      })
+      .getByRole("cell"),
+  ).toHaveText(["1", "2", "2", "3", "33%", "1 (Wk 1)", "0 (Wk 2)", "0.7"]);
+  await expect(
+    table
+      .getByRole("row")
+      .filter({
+        has: page.getByRole("rowheader", { name: /^Rehearsal Player\b/ }),
+      })
+      .getByRole("cell"),
+  ).toHaveText(["2", "1", "1", "3", "17%", "1 (Wk 2)", "0 (Wk 1)", "0.3"]);
+  await expect(
+    page.getByText("Season complete", { exact: true }),
+  ).toBeVisible();
+  const weeks = page.getByRole("region", { name: "Weekly results" });
+  await expect(weeks.getByRole("listitem")).toHaveCount(3);
+  await expect(
+    weeks.getByText("Winner: Rehearsal Rival", { exact: true }),
+  ).toHaveCount(2);
+  await expect(
+    weeks.getByText("Winner: Rehearsal Player", { exact: true }),
+  ).toHaveCount(1);
+  const frozen = await rehearsal.db
+    .prepare(
+      "SELECT COUNT(*) AS count FROM scoreboard_snapshots WHERE season=?",
+    )
+    .bind(rehearsal.historicalSeason)
+    .first<{ count: number }>();
+  expect(frozen?.count).toBe(3);
+
+  await page.getByRole("combobox", { name: "Season", exact: true }).click();
+  await page
+    .getByRole("option", { name: `${rehearsal.season} season`, exact: true })
+    .click();
+  await expect(
+    page.getByRole("table", {
+      name: `${rehearsal.season} season standings`,
+      exact: true,
+    }),
+  ).toBeVisible();
+  const currentWeeks = page.getByRole("region", { name: "Weekly results" });
+  await expect(
+    currentWeeks
+      .getByRole("listitem")
+      .filter({ has: page.getByRole("heading", { name: "Week 1" }) }),
+  ).toContainText("Final");
+  await expect(page.getByText(/In progress/)).toHaveCount(0);
+
+  for (const width of [320, 375, 768, 1023]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(
+      page.getByRole("link", { name: "Season", exact: true }),
+    ).toBeVisible();
+    const layout = await page.evaluate(() => ({
+      page:
+        (document.scrollingElement?.scrollWidth ?? Infinity) <=
+        window.innerWidth,
+      links: Array.from(
+        document.querySelectorAll<HTMLElement>(".app-navigation .nav-link"),
+        (link) => link.scrollWidth <= link.clientWidth,
+      ),
+    }));
+    expect(layout, `Navigation fits at ${width}px`).toEqual({
+      page: true,
+      links: [true, true, true, true, true],
+    });
+    await page.screenshot({
+      path: testInfo.outputPath(`season-${width}.png`),
+      fullPage: true,
+    });
+  }
+});
+
 test("ordinary users cannot access administrator pages or APIs and logout reaches Worker before assets", async ({
   page,
   rehearsal,

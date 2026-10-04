@@ -31,6 +31,26 @@ export const centralTime = new Intl.DateTimeFormat("en-US", {
   timeZoneName: "short",
 });
 
+export function StatStrip({
+  label,
+  items,
+}: {
+  label: string;
+  items: { label: string; value: ReactNode; note?: string }[];
+}) {
+  return (
+    <section className="standings-overview" aria-label={label}>
+      {items.map((item) => (
+        <div key={item.label} className="stat-card">
+          <span className="stat-label">{item.label}</span>
+          <strong className="stat-value">{item.value}</strong>
+          {item.note && <span className="muted">{item.note}</span>}
+        </div>
+      ))}
+    </section>
+  );
+}
+
 export function PersonalStanding({
   standing,
   playerCount,
@@ -41,25 +61,18 @@ export function PersonalStanding({
   hasResults: boolean;
 }) {
   return (
-    <section className="standings-overview" aria-label="Your week at a glance">
-      <div className="stat-card">
-        <span className="stat-label">Your place</span>
-        <strong className="stat-value">
-          {hasResults ? `#${standing.rank}` : "—"}
-        </strong>
-        <span className="muted">
-          {hasResults ? `of ${playerCount} players` : "Awaiting results"}
-        </span>
-      </div>
-      <div className="stat-card">
-        <span className="stat-label">Correct</span>
-        <strong className="stat-value">{standing.correctPicks}</strong>
-      </div>
-      <div className="stat-card">
-        <span className="stat-label">Picks left</span>
-        <strong className="stat-value">{standing.remainingCount}</strong>
-      </div>
-    </section>
+    <StatStrip
+      label="Your week at a glance"
+      items={[
+        {
+          label: "Your place",
+          value: hasResults ? `#${standing.rank}` : "—",
+          note: hasResults ? `of ${playerCount} players` : "Awaiting results",
+        },
+        { label: "Correct", value: standing.correctPicks },
+        { label: "Picks left", value: standing.remainingCount },
+      ]}
+    />
   );
 }
 

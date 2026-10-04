@@ -19,6 +19,10 @@ export function gamesStarted(scoreboard: Scoreboard): boolean {
   );
 }
 
+export function scoreboardComplete(scoreboard: Scoreboard): boolean {
+  return scoreboard.games.every((game) => game.status === "STATUS_FINAL");
+}
+
 export function earliestGameTime(scoreboard: Scoreboard): string | null {
   let earliest: string | null = null;
   for (const game of scoreboard.games) {

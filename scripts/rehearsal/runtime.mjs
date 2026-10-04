@@ -223,6 +223,35 @@ async function seedDatabase(db, season) {
       home: true,
       tiebreaker: 41,
     },
+    // Home always wins: the historical season ends Rival 2-2 wins, Player 1-1.
+    {
+      userId: members.player.id,
+      season: season - 1,
+      week: 2,
+      home: true,
+      tiebreaker: 38,
+    },
+    {
+      userId: members.rival.id,
+      season: season - 1,
+      week: 2,
+      home: false,
+      tiebreaker: 41,
+    },
+    {
+      userId: members.player.id,
+      season: season - 1,
+      week: 3,
+      home: false,
+      tiebreaker: 38,
+    },
+    {
+      userId: members.rival.id,
+      season: season - 1,
+      week: 3,
+      home: true,
+      tiebreaker: 41,
+    },
   ];
   await db.batch(
     rows.map((row) =>

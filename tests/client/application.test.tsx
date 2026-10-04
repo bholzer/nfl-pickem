@@ -218,7 +218,18 @@ describe("authentication and navigation", () => {
           : HttpResponse.json({ error: "CSRF rejected" }, { status: 403 }),
       ),
     );
-    mount("/submissions");
+    mount("/submissions?season=2025&week=7");
+    const navigation = await screen.findByRole("navigation", {
+      name: "Main navigation",
+    });
+    expect(
+      within(navigation)
+        .getAllByRole("link")
+        .map((link) => link.getAttribute("aria-label") ?? link.textContent),
+    ).toEqual(["Home", "Make picks", "Standings", "Season", "My submissions"]);
+    expect(
+      within(navigation).getByRole("link", { name: "Season" }),
+    ).toHaveAttribute("href", "/season?season=2025&week=7");
     await userEvent.click(await screen.findByText("Account"));
     await userEvent.click(
       await screen.findByRole("button", { name: "Sign out" }),

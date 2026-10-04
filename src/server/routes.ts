@@ -26,6 +26,7 @@ import {
   showTiebreaker,
   submissionDetail,
 } from "./services/scoring";
+import { seasonSummary } from "./services/season";
 import { TokenConfigurationError } from "./tokens";
 
 function parseWeek(raw: string | undefined, allowCurrent: false): number;
@@ -237,6 +238,15 @@ apiRoutes.get("/seasons", async (c) => {
     currentSeason: current.season,
     seasons: [...new Set([...stored, current.season])].sort((a, b) => b - a),
   });
+});
+
+apiRoutes.get("/season", async (c) => {
+  // Reject an invalid season before any upstream request.
+  const requested = parseSeason(c.req.query("season"));
+  const context = await getSeasonContext();
+  return c.json(
+    await seasonSummary(c.env, requested ?? context.season, context),
+  );
 });
 
 apiRoutes.get("/weeks/:week", async (c) => {

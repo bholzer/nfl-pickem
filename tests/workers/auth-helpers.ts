@@ -101,3 +101,27 @@ export function mockScoreboard(raw = espnScoreboard()) {
     return Promise.resolve(Response.json(raw));
   });
 }
+
+/** Answers ESPN discovery from context and period requests from `${dates}:${week}` boards. */
+export function mockEspn(
+  context: { season: number; type: number; week: number },
+  boards: Record<string, unknown>,
+) {
+  return mockScoreboard().mockImplementation((input) => {
+    const url = new URL(input instanceof Request ? input.url : String(input));
+    const week = url.searchParams.get("week");
+    if (week === null) {
+      return Promise.resolve(
+        Response.json({
+          season: { year: context.season, type: context.type },
+          week: { number: context.week },
+        }),
+      );
+    }
+    const board = boards[`${url.searchParams.get("dates")}:${week}`];
+    if (url.searchParams.get("seasontype") !== "2" || board === undefined) {
+      throw new Error("Unexpected scoreboard period");
+    }
+    return Promise.resolve(Response.json(board));
+  });
+}

@@ -149,6 +149,48 @@ export interface StandingsData {
   showTiebreaker: boolean;
 }
 
+export type SeasonWeekStatus =
+  "final" | "in_progress" | "incomplete" | "upcoming";
+
+export interface SeasonWeekSummary {
+  week: number;
+  status: SeasonWeekStatus;
+  playerCount: number;
+  winners: Pick<User, "id" | "username">[];
+}
+
+export interface SeasonWeekScore {
+  week: number;
+  correctPicks: number;
+}
+
+export interface SeasonPlayerTotals {
+  user: Pick<User, "id" | "username">;
+  rank: number;
+  /** Correct picks across final, in-progress, and incomplete weeks. */
+  correctPicks: number;
+  /** Picks whose game is on the board and final. */
+  decidedPicks: number;
+  accuracy: number | null;
+  weeklyWins: number;
+  weeksPlayed: number;
+  /** Final weeks only. */
+  bestWeek: SeasonWeekScore | null;
+  worstWeek: SeasonWeekScore | null;
+  averageCorrect: number | null;
+}
+
+export interface SeasonData {
+  season: number;
+  phase: "upcoming" | "in_progress" | "complete";
+  inProgressWeek: number | null;
+  /** Ascending; only weeks with submissions. */
+  weeks: SeasonWeekSummary[];
+  /** Ranked; every user with a submission this season. */
+  players: SeasonPlayerTotals[];
+  checkedAt: string;
+}
+
 export const JOB_TYPES = [
   "deliver_submission_links",
   "deliver_standings",

@@ -1111,6 +1111,15 @@
   .standings-table tbody tr[data-current-user="true"] {
     background: var(--accent-soft);
   }
+  /* Nine season columns scroll inside their region rather than crushing names. */
+  .season-table th,
+  .season-table td {
+    white-space: nowrap;
+  }
+  .season-table th[scope="row"] {
+    min-width: 128px;
+    white-space: normal;
+  }
   .standing-player {
     display: flex;
     align-items: center;
@@ -1256,8 +1265,14 @@
 }
 
 @media (min-width: 768px) and (max-width: 1023px) {
+  /* Five labeled links do not fit beside the brand and Account here. */
   .app-header-inner {
+    flex-wrap: wrap;
     gap: 16px;
+  }
+  .app-navigation {
+    order: 3;
+    flex-basis: 100%;
   }
   .nav-link {
     padding-inline: 10px;
@@ -1290,7 +1305,8 @@
     inset: auto 0 0;
     min-height: var(--nav-height);
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    /* The longest label keeps its width; the other items share the rest. */
+    grid-template-columns: repeat(5, minmax(min-content, 1fr));
     gap: 4px;
     padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
     border-top: 1px solid var(--line);
@@ -1444,6 +1460,14 @@
   .standings-table th,
   .standings-table td {
     padding-inline: 8px;
+  }
+  .app-navigation {
+    gap: 2px;
+    padding-inline: 8px;
+  }
+  .app-navigation .nav-link {
+    font-size: 10px;
+    padding-inline: 2px;
   }
   .app-header-inner {
     padding-inline: 16px;

@@ -1,6 +1,7 @@
 import type { D1Database } from "@cloudflare/workers-types";
 import type {
   Picks,
+  Scoreboard,
   SeasonWeek,
   Submission,
   SubmissionWithUser,
@@ -185,6 +186,56 @@ export async function listWeekSubmissions(
     .bind(season, week)
     .all<SubmissionWithUserRow>();
   return results.map(mapSubmissionWithUser);
+}
+
+export async function listSeasonSubmissions(
+  db: D1Database,
+  season: number,
+): Promise<SubmissionWithUser[]> {
+  const { results } = await db
+    .prepare(
+      `${submissionWithUserQuery} WHERE s.season = ? ORDER BY s.week, s.id`,
+    )
+    .bind(season)
+    .all<SubmissionWithUserRow>();
+  return results.map(mapSubmissionWithUser);
+}
+
+export async function getScoreboardSnapshot(
+  db: D1Database,
+  { season, week }: SeasonWeek,
+): Promise<Scoreboard | null> {
+  const row = await db
+    .prepare(
+      "SELECT scoreboard FROM scoreboard_snapshots WHERE season = ? AND week = ?",
+    )
+    .bind(season, week)
+    .first<{ scoreboard: string }>();
+  if (!row) {
+    return null;
+  }
+  const scoreboard = JSON.parse(row.scoreboard) as Scoreboard;
+  if (scoreboard.season !== season || scoreboard.week !== week) {
+    throw new Error("Stored scoreboard period does not match its row");
+  }
+  return scoreboard;
+}
+
+/** First writer wins; concurrent fills hold equivalent all-final boards. */
+export async function saveScoreboardSnapshot(
+  db: D1Database,
+  scoreboard: Scoreboard,
+  now = new Date().toISOString(),
+): Promise<void> {
+  await db
+    .prepare(
+      `
+    INSERT INTO scoreboard_snapshots (season, week, scoreboard, snapshot_at)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT (season, week) DO NOTHING`,
+    )
+    .bind(scoreboard.season, scoreboard.week, JSON.stringify(scoreboard), now)
+    .run();
 }
 
 export async function listSeasons(db: D1Database): Promise<number[]> {

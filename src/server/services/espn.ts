@@ -310,7 +310,7 @@ async function request(url: URL): Promise<unknown> {
   }
 }
 
-interface SeasonContext {
+export interface SeasonContext {
   season: number;
   seasonType: number;
   week: number | null;

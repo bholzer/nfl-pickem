@@ -98,10 +98,12 @@ remain valid choices; the primitive's internal value encoding is not an API chan
 - `.page-toolbar` aligns controls and actions along their bottom edge, with a
   minimum 16px gap and wrapping when needed. Inputs, option triggers, and buttons
   share a 44px height. Use 24px separation between major content sections.
-- There is one primary navigation instance: Home, Make picks, Standings, My submissions.
-  It sits in the header at 768px and above and at the bottom on smaller screens.
-  Phones shorten the last visible label to Submissions; its accessible name remains
-  My submissions, and all four controls retain their touch-target size.
+- There is one primary navigation instance: Home, Make picks, Standings, Season,
+  My submissions. It sits in the header at 768px and above and at the bottom on
+  smaller screens. Phones shorten the last visible label to Submissions; its
+  accessible name remains My submissions, and all five controls retain their
+  touch-target size. Bottom-navigation columns never shrink below their label;
+  from 768px to 1023px the header navigation takes its own full-width row.
 - Bottom navigation and the submission dock account for device safe areas.
 - Account contains identity, appearance, sign-out, and authorized administrator links.
   Escape closes it and returns focus; leaving the disclosure also closes it.
@@ -210,11 +212,28 @@ small contextual line, not another large card.
 
 Keep names readable, highlight the current row quietly, and place status with the
 player. Rank and scores come from the API; do not fabricate percentages, deltas,
-or season totals. Preserve the existing hidden-pick and tiebreaker privacy rules.
+or season totals. Season totals come from `/api/season`. Preserve the existing
+hidden-pick and tiebreaker privacy rules.
 
 Normal standings fit narrow screens, including long names. Conditional tiebreaker
 columns remain in the semantic table and can scroll inside a focusable region
 rather than widening the page. Empty standings provide a direct route to picking.
+
+## Season
+
+Season mirrors Standings: page toolbar with the season picker, a three-part strip
+(your place, correct picks, weekly wins), one contextual phase line, the ranked
+table, and a divided Weekly results list linking to each week's standings.
+
+- Every total, rank, accuracy, and average comes from the server; the browser only
+  formats numbers and shows "—" for null values. Never compute percentages here.
+- Use the literal phase labels (Season in progress, Season complete, Season hasn't
+  started) and week labels (Final, In progress, Incomplete, Upcoming). An
+  Incomplete week is never described as in progress.
+- The nine-column table keeps numbers on one line and player names readable, and
+  scrolls inside a focusable region rather than widening the page.
+- The page sends only the season; the URL keeps any week so other navigation
+  retains its context. An empty season links directly to picking.
 
 ## Submission history and details
 

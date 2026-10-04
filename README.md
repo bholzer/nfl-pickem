@@ -64,6 +64,15 @@ chosen side. Phones use result icons with a visible key; wider screens retain
 logos and result words. Detailed restores full names and kickoff information.
 The browser remembers the display choice.
 
+**Season** ranks the pool by total correct picks across a season, with weekly
+wins as the tiebreaker, and lists each player's decided picks, accuracy, weeks
+played, best/worst final week, and average per final week. A missed week counts
+as zero. A personal strip shows your place, correct picks, and weekly wins, and
+a Weekly results list links each week to its standings. The current week is
+included live and labeled **In progress**; a started week that ESPN has moved
+past without finishing (a cancelled or postponed game) is labeled **Incomplete**
+and excluded from best, worst, and average. All totals come from the server.
+
 Unsubmitted picks can recover from this device's local storage, scoped to the
 authenticated user, season, and week. A draft is **not a submission**: users must
 explicitly submit. Expired drafts and drafts based on an older saved submission
@@ -90,8 +99,9 @@ npx --no-install wrangler deploy --dry-run --config dist/server/wrangler.json
 ```
 
 The browser suite covers signed links, pick persistence, cross-season history
-and standings, archived pick locks, authorization, logout through the actual asset
-router, and native job failure reporting with sending disabled. Desktop and
+and standings, season totals with frozen final boards, five-item navigation from
+320px through 1023px, archived pick locks, authorization, logout through the actual
+asset router, and native job failure reporting with sending disabled. Desktop and
 mobile/dark-mode projects save screenshots under `tmp/playwright`; failure traces
 stay local.
 CI enforces formatting, strict types/lint, complexity limits, and the dead-code
@@ -205,6 +215,23 @@ Week and standings reads accept `?season=YYYY`; omission selects the current sea
 Saving `PUT /api/submissions/:week?season=YYYY` requires the season explicitly.
 Job enqueue requests and private Workflow plans require `season`; a null week
 resolves only within that pinned season's current regular-season period.
+
+`GET /api/season?season=YYYY` (current season when omitted) returns per-player
+season totals and a per-week status/winner list. It carries no picks, remaining
+picks, or tiebreakers, and fails closed with 502 when any needed week's game data
+is unavailable. Only weeks with submissions are read. Weekly winners use the same
+standings calculation as Discord: a lone submitter never wins, and an early
+clinched leader does.
+
+Migration `0005_scoreboard_snapshots.sql` adds `scoreboard_snapshots`, which stores
+a week's normalized ESPN scoreboard once every game is final. Game results, not
+derived standings, are stored. The season endpoint fills it on read: this GET has
+a guarded D1 side effect, skipped while `MAINTENANCE_MODE` is `true`, and writes
+with `ON CONFLICT DO NOTHING`. There is no backfill; a season fills the first time
+it is viewed (up to 18 ESPN requests once), after which only unfinished weeks are
+fetched. Weekly standings, the dashboard, and submission details still read ESPN
+live. If ESPN corrects a result after it was frozen, delete that week's row to
+refetch it.
 
 ### Winner receipt comparison
 

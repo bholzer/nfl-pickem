@@ -4,30 +4,14 @@ import { describe, expect, it, vi } from "vitest";
 import { saveSubmission } from "../../src/server/db";
 import type { DashboardData } from "../../src/shared/contracts";
 import { espnEvent, espnScoreboard } from "../fixtures/espn";
-import { app, login, mockScoreboard, origin, testEnv } from "./auth-helpers";
-
-function mockDashboard(
-  context: { season: number; type: number; week: number },
-  boards: Record<string, unknown>,
-) {
-  return mockScoreboard().mockImplementation((input) => {
-    const url = new URL(input instanceof Request ? input.url : String(input));
-    const week = url.searchParams.get("week");
-    if (week === null) {
-      return Promise.resolve(
-        Response.json({
-          season: { year: context.season, type: context.type },
-          week: { number: context.week },
-        }),
-      );
-    }
-    const board = boards[`${url.searchParams.get("dates")}:${week}`];
-    if (url.searchParams.get("seasontype") !== "2" || board === undefined) {
-      throw new Error("Unexpected scoreboard period");
-    }
-    return Promise.resolve(Response.json(board));
-  });
-}
+import {
+  app,
+  login,
+  mockEspn,
+  mockScoreboard,
+  origin,
+  testEnv,
+} from "./auth-helpers";
 
 async function loadDashboard(headers: Record<string, string>, query = "") {
   const response = await app.request(
@@ -142,7 +126,7 @@ describe("personal weekly dashboard", () => {
       .spyOn(Date, "now")
       .mockReturnValue(Date.parse(firstKickoff) - 1);
     const viewer = await login();
-    mockDashboard(
+    mockEspn(
       { season: 2026, type: 2, week: 1 },
       {
         "2026:1": espnScoreboard([
@@ -195,7 +179,7 @@ describe("personal weekly dashboard", () => {
       tiebreaker: 30,
       locked: false,
     });
-    mockDashboard(
+    mockEspn(
       { season: 2026, type: 2, week: 1 },
       {
         "2026:1": espnScoreboard([espnEvent({ date: "2099-09-13T17:00:00Z" })]),
@@ -206,7 +190,7 @@ describe("personal weekly dashboard", () => {
       eligibleGames: 1,
       deadline: "2099-09-13T17:00:00.000Z",
     });
-    mockDashboard(
+    mockEspn(
       { season: 2026, type: 2, week: 1 },
       {
         "2026:1": espnScoreboard([]),
@@ -239,7 +223,7 @@ describe("personal weekly dashboard", () => {
       tiebreaker: 77,
       locked: false,
     });
-    mockDashboard(
+    mockEspn(
       { season: 2026, type: 2, week: 2 },
       {
         "2026:2": espnScoreboard([espnEvent()], 2),
@@ -258,7 +242,7 @@ describe("personal weekly dashboard", () => {
       playerCount: 1,
       standing: { correctPicks: 1, remainingCount: 1, tiebreaker: null },
     });
-    mockDashboard(
+    mockEspn(
       { season: 2026, type: 2, week: 3 },
       {
         "2026:3": espnScoreboard([espnEvent()], 3),
@@ -277,14 +261,14 @@ describe("personal weekly dashboard", () => {
       tiebreaker: 30,
       locked: false,
     });
-    mockDashboard(
+    mockEspn(
       { season: 2026, type: 2, week: 1 },
       {
         "2026:1": espnScoreboard([espnEvent()]),
       },
     );
     expect((await loadDashboard(viewer.headers)).previous).toBeNull();
-    mockDashboard({ season: 2026, type: 4, week: 1 }, {});
+    mockEspn({ season: 2026, type: 4, week: 1 }, {});
     expect(await loadDashboard(viewer.headers)).toMatchObject({
       season: 2026,
       phase: "offseason",
@@ -304,7 +288,7 @@ describe("personal weekly dashboard", () => {
       locked: false,
     });
     assert(submission);
-    mockDashboard({ season: 2026, type: 1, week: 2 }, {});
+    mockEspn({ season: 2026, type: 1, week: 2 }, {});
     expect(await loadDashboard(viewer.headers)).toMatchObject({
       season: 2026,
       phase: "preseason",
@@ -315,7 +299,7 @@ describe("personal weekly dashboard", () => {
       [3, "postseason"],
       [4, "offseason"],
     ] as const) {
-      mockDashboard(
+      mockEspn(
         { season: 2026, type, week: 2 },
         {
           "2026:18": espnScoreboard(

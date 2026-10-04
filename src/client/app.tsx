@@ -23,6 +23,7 @@ import { JobDetailPage, JobsPage } from "./jobs";
 import { clearDraftsForUser, clearExpiredDrafts } from "./drafts";
 import { DashboardPage } from "./dashboard";
 import { ReceiptPage } from "./receipts";
+import { SeasonPage } from "./season";
 
 function AccountMenu({ query }: { query: string }) {
   const session = useSession();
@@ -121,12 +122,13 @@ function AccountMenu({ query }: { query: string }) {
 function NavigationIcon({
   kind,
 }: {
-  kind: "home" | "picks" | "standings" | "history";
+  kind: "home" | "picks" | "standings" | "season" | "history";
 }) {
   const paths = {
     home: "m3 10 9-7 9 7v11h-6v-7H9v7H3z",
     picks: "m5 12 4 4L19 6",
     standings: "M5 20V10m7 10V4m7 16v-7",
+    season: "M4 5h16v15H4zM4 9h16M8 3v4m8-4v4",
     history: "M6 3h12v18H6zM9 8h6m-6 4h6m-6 4h4",
   };
   return (
@@ -181,6 +183,10 @@ function Layout() {
               <NavLink className="nav-link" to={`/standings${query}`}>
                 <NavigationIcon kind="standings" />
                 <span>Standings</span>
+              </NavLink>
+              <NavLink className="nav-link" to={`/season${query}`}>
+                <NavigationIcon kind="season" />
+                <span>Season</span>
               </NavLink>
               <NavLink
                 className="nav-link"
@@ -321,6 +327,7 @@ export function App() {
           <Route path="receipts/:id" element={<ReceiptPage />} />
           <Route element={<Protected />}>
             <Route path="standings" element={<StandingsPage />} />
+            <Route path="season" element={<SeasonPage />} />
             <Route path="submissions" element={<HistoryPage />} />
             <Route path="submissions/new" element={<PicksPage />} />
             <Route path="submissions/:id" element={<SubmissionPage />} />
