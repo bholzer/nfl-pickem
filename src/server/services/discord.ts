@@ -213,6 +213,7 @@ async function sendParts(
   env: Env,
   channelId: string,
   parts: string[],
+  mentionEveryone = false,
 ): Promise<DiscordMessage[]> {
   const messages: DiscordMessage[] = [];
   for (const content of parts) {
@@ -221,7 +222,7 @@ async function sendParts(
       `/channels/${channelId}/messages`,
       {
         content,
-        allowed_mentions: { parse: [] },
+        allowed_mentions: { parse: mentionEveryone ? ["everyone"] : [] },
       },
     );
     if (response.channel_id !== channelId) {
@@ -239,9 +240,15 @@ export async function sendChannelMessage(
   env: Env,
   channelId: string,
   message: string,
+  { mentionEveryone = false }: { mentionEveryone?: boolean } = {},
 ): Promise<DiscordMessage[]> {
   authorize(env, channelId, "channel");
-  return sendParts(env, channelId, splitDiscordMessage(message));
+  return sendParts(
+    env,
+    channelId,
+    splitDiscordMessage(message),
+    mentionEveryone,
+  );
 }
 
 export async function sendDirectMessage(
@@ -326,6 +333,19 @@ export async function sendSubmissionLink(
     user.discordId,
     `Hi, ${displayName(user)}\n\nPick-em ${period.season} week ${period.week} is here!\n\n[Submit your picks here](${url.href})`,
   );
+}
+
+export function renderReminder(
+  period: SeasonWeek,
+  kickoff: string,
+  origin: URL,
+): string {
+  // Discord timestamps render in each reader's time zone and count down live.
+  const seconds = Math.floor(Date.parse(kickoff) / 1_000);
+  return [
+    `## :alarm_clock: ${period.season} Week ${period.week} picks lock <t:${seconds}:R>`,
+    `@everyone First kickoff at <t:${seconds}:t> · [Make or update your picks](${new URL("/", origin).href})`,
+  ].join("\n");
 }
 
 export function renderStandings(

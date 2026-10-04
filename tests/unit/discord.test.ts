@@ -13,6 +13,7 @@ import {
   DiscordError,
   getChannelDestination,
   renderHashes,
+  renderReminder,
   renderStandings,
   sendChannelMessage,
   sendDirectMessage,
@@ -277,6 +278,33 @@ describe("Discord approval boundary", () => {
     );
     expect(contents).toEqual([
       { content: "production message", allowed_mentions: { parse: [] } },
+    ]);
+  });
+
+  it("parses @everyone only when a send explicitly opts in", async () => {
+    const contents: unknown[] = [];
+    network.use(
+      http.post(
+        `${api}/channels/${channelId}/messages`,
+        async ({ request }) => {
+          contents.push(await request.json());
+          return HttpResponse.json({
+            id: "444444444444444444",
+            channel_id: channelId,
+          });
+        },
+      ),
+    );
+    await sendChannelMessage(config(), channelId, "@everyone silent");
+    await sendChannelMessage(config(), channelId, "@everyone loud", {
+      mentionEveryone: true,
+    });
+    expect(contents).toEqual([
+      { content: "@everyone silent", allowed_mentions: { parse: [] } },
+      {
+        content: "@everyone loud",
+        allowed_mentions: { parse: ["everyone"] },
+      },
     ]);
   });
 });
@@ -560,6 +588,21 @@ describe("Discord content", () => {
         "### Eliminated :skull:",
         "~~2\\. Bob: 8 points (Tiebreaker: 48, off by 14)~~",
         "~~3\\. Carol: 7 points (Tiebreaker: 42, off by 8)~~",
+      ].join("\n"),
+    );
+  });
+
+  it("renders a reminder with live kickoff timestamps and the site link", () => {
+    expect(
+      renderReminder(
+        { season: 2026, week: 5 },
+        "2026-10-09T00:15:00Z",
+        new URL("https://picks.example.test"),
+      ),
+    ).toBe(
+      [
+        "## :alarm_clock: 2026 Week 5 picks lock <t:1791504900:R>",
+        "@everyone First kickoff at <t:1791504900:t> · [Make or update your picks](https://picks.example.test/)",
       ].join("\n"),
     );
   });

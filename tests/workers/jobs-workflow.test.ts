@@ -18,6 +18,7 @@ import {
 } from "../../src/server/jobs/store";
 import {
   renderHashes,
+  renderReminder,
   renderStandings,
   splitDiscordMessage,
 } from "../../src/server/services/discord";
@@ -42,6 +43,7 @@ type InterceptState = {
   };
   espnFailures: number;
   messages: Array<{ channel: string; content: string }>;
+  mentions: unknown[];
   failures: number[];
   beforeMessage: null | (() => void | Promise<void>);
   beforeScoreboard: null | (() => Promise<void>);
@@ -65,6 +67,7 @@ async function discordResponse(
   const body = await request.json<{
     recipient_id?: string;
     content?: string;
+    allowed_mentions?: { parse?: unknown };
   }>();
   if (
     url.pathname === "/api/v10/users/@me/channels" &&
@@ -76,13 +79,16 @@ async function discordResponse(
       recipients: [{ id: body.recipient_id }],
     });
   }
-  return discordMessageResponse(url, state, body.content);
+  return discordMessageResponse(url, state, body);
 }
 
 async function discordMessageResponse(
   url: URL,
   state: InterceptState,
-  content: unknown,
+  {
+    content,
+    allowed_mentions,
+  }: { content?: unknown; allowed_mentions?: { parse?: unknown } },
 ) {
   const channel = /^\/api\/v10\/channels\/(9999|81001|81002)\/messages$/.exec(
     url.pathname,
@@ -101,6 +107,7 @@ async function discordMessageResponse(
     );
   }
   state.messages.push({ channel, content });
+  state.mentions.push(allowed_mentions?.parse);
   return Response.json({
     id: String(7776 + state.messages.length),
     channel_id: channel,
@@ -112,6 +119,7 @@ function intercept(initial = espnScoreboard()) {
     scoreboard: initial,
     espnFailures: 0,
     messages: [],
+    mentions: [],
     failures: [],
     beforeMessage: null,
     beforeScoreboard: null,
@@ -484,9 +492,8 @@ describe("native PickemWorkflow", () => {
 
   it("sleeps durably until kickoff and hashes submissions saved after scheduling", async () => {
     const user = await seed();
-    const scoreboard = espnScoreboard([
-      espnEvent({ date: new Date(Date.now() + 4000).toISOString() }),
-    ]);
+    const kickoff = new Date(Date.now() + 4000).toISOString();
+    const scoreboard = espnScoreboard([espnEvent({ date: kickoff })]);
     const sent = intercept(scoreboard);
     const id = crypto.randomUUID();
     await using trace = await introspectWorkflowInstance(env.JOBS, id);
@@ -500,7 +507,6 @@ describe("native PickemWorkflow", () => {
       },
     });
     await trace.waitForStepResult({ name: "plan kickoff" });
-    expect(sent.messages).toEqual([]);
     await saveSubmission(env.DB, {
       userId: user.id,
       season: 2026,
@@ -514,7 +520,19 @@ describe("native PickemWorkflow", () => {
       normalizeScoreboard(scoreboard),
     );
     await trace.waitForStatus("complete");
-    expect(sent.messages).toEqual([{ channel: "9999", content: expected }]);
+    // Kickoff is under an hour away, so the reminder goes out immediately.
+    expect(sent.messages).toEqual([
+      {
+        channel: "9999",
+        content: renderReminder(
+          { season: 2026, week: 1 },
+          kickoff,
+          new URL(env.APP_ORIGIN),
+        ),
+      },
+      { channel: "9999", content: expected },
+    ]);
+    expect(sent.mentions).toEqual([["everyone"], []]);
   }, 15_000);
 
   it("delivers a scheduled hash job immediately when its kickoff has already passed", async () => {
@@ -540,6 +558,95 @@ describe("native PickemWorkflow", () => {
     });
     await trace.waitForStatus("complete");
     expect(sent.messages).toEqual([{ channel: "9999", content: expected }]);
+    expect(
+      await env.DB.prepare(
+        "SELECT status FROM job_deliveries WHERE run_id=? AND key LIKE '%:reminder'",
+      )
+        .bind(id)
+        .all(),
+    ).toMatchObject({ results: [{ status: "suppressed" }] });
+  });
+
+  it("still publishes hashes when the kickoff reminder fails permanently", async () => {
+    await seed();
+    const sent = intercept(
+      espnScoreboard([
+        espnEvent({ date: new Date(Date.now() + 86400_000).toISOString() }),
+      ]),
+    );
+    sent.failures.push(403);
+    const id = crypto.randomUUID();
+    await using trace = await introspectWorkflowInstance(env.JOBS, id);
+    await trace.modify(async (modifier) => {
+      await modifier.disableSleeps();
+    });
+    await env.JOBS.create({
+      id,
+      params: {
+        type: "schedule_hash_delivery",
+        season: 2026,
+        week: 1,
+        runId: id,
+      },
+    });
+    await trace.waitForStatus("complete");
+    expect(sent.messages).toHaveLength(1);
+    expect(sent.messages[0]?.content).toContain("Pick Hashes");
+    const reminder = await env.DB.prepare(
+      "SELECT status,error FROM job_deliveries WHERE run_id=? AND key LIKE '%:reminder'",
+    )
+      .bind(id)
+      .first<{ status: string; error: string | null }>();
+    expect(reminder?.status).toBe("failed");
+    expect(reminder?.error).toContain("403");
+  });
+
+  it("does not repeat a sent reminder when a failed hash job is retried", async () => {
+    await seed();
+    const sent = intercept(
+      espnScoreboard([
+        espnEvent({ date: new Date(Date.now() + 86400_000).toISOString() }),
+      ]),
+    );
+    let requests = 0;
+    sent.beforeMessage = () => {
+      requests++;
+      if (requests === 2) {
+        sent.failures.push(403);
+      }
+    };
+    await using traces = await introspectWorkflow(env.JOBS);
+    await traces.modifyAll(async (modifier) => {
+      await modifier.disableSleeps();
+    });
+    const first = await enqueue(env, "schedule_hash_delivery", {
+      season: 2026,
+      week: 1,
+    });
+    const firstTrace = await introspectWorkflowInstance(env.JOBS, first.id);
+    try {
+      await firstTrace.waitForStatus("errored");
+    } finally {
+      await firstTrace.dispose();
+    }
+    const retried = await controlRun(env, first.id, "retry");
+    const nextTrace = await introspectWorkflowInstance(env.JOBS, retried.id);
+    try {
+      await nextTrace.waitForStatus("complete");
+    } finally {
+      await nextTrace.dispose();
+    }
+    expect(sent.messages.map((item) => item.content.split("\n")[0])).toEqual([
+      expect.stringMatching(/^## :alarm_clock: 2026 Week 1 picks lock /),
+      "# 2026 Week 1 Pick Hashes (SHA-256 Hex)",
+    ]);
+    expect(
+      await env.DB.prepare(
+        "SELECT status FROM job_deliveries WHERE run_id=? AND key LIKE '%:reminder'",
+      )
+        .bind(retried.id)
+        .all(),
+    ).toMatchObject({ results: [{ status: "suppressed" }] });
   });
 
   it("retains a kickoff computed during pause so the resumed job can run now", async () => {

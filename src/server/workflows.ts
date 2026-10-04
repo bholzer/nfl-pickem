@@ -18,6 +18,8 @@ import { calculateStandings, earliestGameTime } from "./services/scoring";
 import { completedGroups } from "./services/groups";
 import {
   DiscordError,
+  applicationOrigin,
+  renderReminder,
   renderStandings,
   sendChannelMessage,
   sendSubmissionLink,
@@ -50,6 +52,7 @@ const ioRetry = {
   retries: { limit: 4, delay: "5 seconds", backoff: "exponential" },
   timeout: "1 minute",
 } satisfies WorkflowStepConfig;
+const REMINDER_LEAD_MS = 3600_000;
 
 function workflowParams(event: WorkflowEvent<JobParams>): JobParams {
   const scheduled = event.schedule;
@@ -127,6 +130,8 @@ type Delivery = {
   send: () => Promise<unknown>;
   beforeSend?: () => Promise<"ready" | "busy" | "suppressed">;
   suppressionTtl?: number | null;
+  /** Record a permanent failure and continue the run instead of failing it. */
+  optional?: boolean;
 };
 
 type DeliveryAttempt = Delivery & {
@@ -138,6 +143,31 @@ type DeliveryResult = {
   state: "paused" | "busy" | "done" | "retry";
   delay: number;
 };
+
+function failedDelivery(
+  error: unknown,
+  attempt: number,
+  optional = false,
+): DeliveryResult {
+  const permanent =
+    error instanceof NonRetryableError ||
+    (error instanceof DiscordError && !error.retryable);
+  if (permanent || attempt >= 4) {
+    if (optional) {
+      return { state: "done", delay: 0 };
+    }
+    throw new NonRetryableError(
+      permanent
+        ? errorMessage(error)
+        : `Delivery exhausted retries: ${errorMessage(error)}`,
+    );
+  }
+  const delay =
+    error instanceof DiscordError && error.retryAfterSeconds !== null
+      ? Math.max(error.retryAfterSeconds * 1000, 1000)
+      : 5000 * 2 ** attempt;
+  return { state: "retry", delay };
+}
 
 export class PickemWorkflow extends WorkflowEntrypoint<Env, JobParams> {
   async run(event: WorkflowEvent<JobParams>, step: WorkflowStep) {
@@ -229,6 +259,7 @@ export class PickemWorkflow extends WorkflowEntrypoint<Env, JobParams> {
             .run();
           return kickoff;
         });
+        await this.remind(step, { id, period, scope, kickoff });
         // Late starts and resumed executions may already be past kickoff.
         // sleepUntil rejects past timestamps; a zero relative wait is valid.
         await step.sleep(
@@ -329,6 +360,45 @@ export class PickemWorkflow extends WorkflowEntrypoint<Env, JobParams> {
     }
   }
 
+  private async remind(
+    step: WorkflowStep,
+    {
+      id,
+      period,
+      scope,
+      kickoff,
+    }: { id: string; period: SeasonWeek; scope: string; kickoff: string },
+  ) {
+    const kickoffAt = Date.parse(kickoff);
+    await step.sleep(
+      "wait for reminder",
+      Math.max(0, kickoffAt - REMINDER_LEAD_MS - Date.now()),
+    );
+    // A failed reminder must never block the hash publication that follows.
+    await this.deliver(step, "reminder", {
+      id,
+      key: `${scope}:reminder`,
+      optional: true,
+      // Picks are locked once play starts, so a late reminder is only noise.
+      beforeSend: () =>
+        Promise.resolve(Date.now() < kickoffAt ? "ready" : "suppressed"),
+      send: () =>
+        sendChannelMessage(
+          this.env,
+          this.env.DISCORD_CHANNEL_ID,
+          renderReminder(period, kickoff, applicationOrigin(this.env)),
+          { mentionEveryone: true },
+        ),
+    });
+    await step.do("plan hash delivery", ioRetry, async () => {
+      await this.env.DB.prepare(
+        "UPDATE job_runs SET status='sleeping',updated_at=? WHERE id=? AND status='running'",
+      )
+        .bind(nowIso(), id)
+        .run();
+    });
+  }
+
   private async gate(step: WorkflowStep, id: string, name: string) {
     for (let index = 0; ; index++) {
       const paused = await step.do(`${name} gate ${index}`, ioRetry, async () =>
@@ -391,7 +461,7 @@ export class PickemWorkflow extends WorkflowEntrypoint<Env, JobParams> {
   private async deliver(
     step: WorkflowStep,
     name: string,
-    { id, key, send, beforeSend, suppressionTtl = null }: Delivery,
+    { id, key, send, beforeSend, suppressionTtl = null, optional }: Delivery,
   ) {
     for (let attempt = 0, wait = 0; ; wait++) {
       const result = await step.do(
@@ -407,6 +477,7 @@ export class PickemWorkflow extends WorkflowEntrypoint<Env, JobParams> {
             send,
             beforeSend,
             suppressionTtl,
+            optional,
             attempt,
           }),
       );
@@ -455,7 +526,7 @@ export class PickemWorkflow extends WorkflowEntrypoint<Env, JobParams> {
   }
 
   private async sendClaimedDelivery(
-    { id, key, send, attempt }: DeliveryAttempt,
+    { id, key, send, attempt, optional }: DeliveryAttempt,
     owner: string,
   ): Promise<DeliveryResult> {
     try {
@@ -473,22 +544,7 @@ export class PickemWorkflow extends WorkflowEntrypoint<Env, JobParams> {
     } catch (error) {
       await releaseEffect(this.env.DB, key, owner);
       await recordDelivery(this.env.DB, id, key, "failed", errorMessage(error));
-      if (
-        error instanceof NonRetryableError ||
-        (error instanceof DiscordError && !error.retryable)
-      ) {
-        throw new NonRetryableError(errorMessage(error));
-      }
-      if (attempt >= 4) {
-        throw new NonRetryableError(
-          `Delivery exhausted retries: ${errorMessage(error)}`,
-        );
-      }
-      const delay =
-        error instanceof DiscordError && error.retryAfterSeconds !== null
-          ? Math.max(error.retryAfterSeconds * 1000, 1000)
-          : 5000 * 2 ** attempt;
-      return { state: "retry", delay };
+      return failedDelivery(error, attempt, optional);
     }
   }
 

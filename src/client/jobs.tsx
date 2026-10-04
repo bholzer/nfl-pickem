@@ -27,7 +27,7 @@ const JOB_LABELS: Record<JobType, string> = {
   deliver_submission_links: "Deliver submission links",
   deliver_standings: "Deliver standings",
   deliver_hashes: "Deliver hashes",
-  schedule_hash_delivery: "Schedule hash delivery",
+  schedule_hash_delivery: "Schedule reminder & hash delivery",
 };
 const JOB_OPTIONS = JOB_TYPES.map((value) => ({
   value,

@@ -173,6 +173,11 @@ sequencing rather than fragmenting behavior solely for a score.
   markers suppress repeated work. Discord sends and database commits cannot be
   atomic: an interrupted remote send can still have an ambiguous outcome.
   Review that outcome before retrying or recovering service.
+- The scheduled hash job first sleeps until one hour before the week's earliest
+  kickoff and posts an `@everyone` pick reminder to the channel. The reminder is
+  skipped once kickoff has passed, is never repeated by retries in the same
+  delivery scope, and a failed reminder does not stop the hash publication.
+  Replacing a sleeping hash job with run-now skips its pending reminder.
 - Scheduled hashes read submissions after their durable kickoff wait. Imported
   dispatch times remain separate from computed kickoff times. Unresolved jobs
   stay pinned to their enqueue season; resolved retries retain the exact season
@@ -311,7 +316,7 @@ are registered on `nfl-pickem-production-jobs`; there are no duplicate Worker cr
 | Delivery | Native schedule (UTC) |
 | --- | --- |
 | Weekly personal pick links | Tuesday at 13:00 |
-| Hash scheduling, followed by the durable kickoff wait | Thursday at 14:00 |
+| Hash scheduling: reminder one hour before kickoff, then hashes at kickoff | Thursday at 14:00 |
 | Standings checks | Every 15 minutes, Friday 02:00–04:45 |
 | Standings checks | Every 15 minutes, Sunday 20:00–23:45 |
 | Standings checks | Every 15 minutes, Monday 00:00–05:45 |
