@@ -356,7 +356,8 @@ export function renderStandings(
       standing.tiebreakerDiff === null
         ? ""
         : ` (Tiebreaker: ${standing.tiebreaker}, off by ${standing.tiebreakerDiff})`;
-    const line = `${standing.rank}. ${displayName(standing.user)}: ${points}${tiebreaker}`;
+    // Escaped so Discord shows the real rank instead of renumbering a list.
+    const line = `${standing.rank}\\. ${displayName(standing.user)}: ${points}${tiebreaker}`;
     const receipt = standing.winner
       ? receiptLinks?.get(standing.submissionId)
       : undefined;
@@ -386,7 +387,8 @@ export function renderStandings(
       ...eliminated.map((standing) => `~~${entry(standing)}~~`),
     );
   }
-  return sections.join("\n\n");
+  // Headings already add spacing; blank lines only make the message sparse.
+  return sections.join("\n");
 }
 
 export interface RenderedHashReceipt {
@@ -429,7 +431,7 @@ export async function renderHashes(
     });
   }
   return {
-    message: `# ${scoreboard.season} Week ${scoreboard.week} Pick Hashes (SHA-256 Hex)\nUse this hash to verify the winner's picks\n\n${entries.join("\n\n")}`,
+    message: `# ${scoreboard.season} Week ${scoreboard.week} Pick Hashes (SHA-256 Hex)\nUse this hash to verify the winner's picks\n\n${entries.join("\n")}`,
     receipts,
   };
 }
