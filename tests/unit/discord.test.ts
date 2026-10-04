@@ -514,6 +514,54 @@ describe("Discord content", () => {
     ).toEqual(["Alice", "Bob"]);
   });
 
+  it("lists tied contenders who lost the tiebreaker as eliminated", () => {
+    const winner: Standing = {
+      user,
+      submissionId: 1,
+      correctPicks: 8,
+      remainingPicks: {},
+      tiebreaker: 43,
+      tiebreakerDiff: 9,
+      contender: true,
+      winner: true,
+      rank: 1,
+    };
+    const message = renderStandings(
+      [
+        winner,
+        {
+          ...winner,
+          user: { ...user, id: 2, username: "Bob" },
+          submissionId: 2,
+          tiebreaker: 48,
+          tiebreakerDiff: 14,
+          winner: false,
+          rank: 2,
+        },
+        {
+          ...winner,
+          user: { ...user, id: 3, username: "Carol" },
+          submissionId: 3,
+          correctPicks: 7,
+          tiebreaker: 42,
+          tiebreakerDiff: 8,
+          contender: false,
+          winner: false,
+          rank: 3,
+        },
+      ],
+      scoreboard,
+    );
+    expect(message).not.toContain("Contender");
+    const [, eliminated] = message.split("### Eliminated :skull:");
+    expect(eliminated).toContain(
+      "~~2. Bob: 8 points (Tiebreaker: 48, off by 14)~~",
+    );
+    expect(eliminated).toContain(
+      "~~3. Carol: 7 points (Tiebreaker: 42, off by 8)~~",
+    );
+  });
+
   it("hashes the complete chronological Rails summary including picks and tiebreaker", async () => {
     const summary =
       "Alice\nChiefs at Bills: Kansas City Chiefs\nBears at Packers: Green Bay Packers\nTiebreaker: 42";

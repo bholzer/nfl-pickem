@@ -344,8 +344,10 @@ export function renderStandings(
   const contenders = sorted.filter(
     (standing) => standing.contender && !standing.winner,
   );
+  // Once a winner exists, contenders who lost the tiebreaker are eliminated too.
   const eliminated = sorted.filter(
-    (standing) => !standing.contender && !standing.winner,
+    (standing) =>
+      !standing.winner && (winners.length > 0 || !standing.contender),
   );
   const sections = [`# ${period.season} Week ${period.week} Pick-em Standings`];
   const entry = (standing: Standing): string => {
