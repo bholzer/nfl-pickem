@@ -169,7 +169,7 @@ export interface SeasonPlayerTotals {
   rank: number;
   /** Correct picks across final, in-progress, and incomplete weeks. */
   correctPicks: number;
-  /** Picks whose game is on the board and final. */
+  /** Picks whose game is on the board and final; the accuracy denominator. */
   decidedPicks: number;
   accuracy: number | null;
   weeklyWins: number;
