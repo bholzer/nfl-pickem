@@ -238,6 +238,36 @@ export async function saveScoreboardSnapshot(
     .run();
 }
 
+export async function listSeasonEntryFees(
+  db: D1Database,
+  season: number,
+): Promise<Map<number, number>> {
+  const { results } = await db
+    .prepare("SELECT week, fee_cents FROM week_entry_fees WHERE season = ?")
+    .bind(season)
+    .all<{ week: number; fee_cents: number }>();
+  return new Map(results.map((row) => [row.week, row.fee_cents]));
+}
+
+export async function setWeekEntryFee(
+  db: D1Database,
+  { season, week }: SeasonWeek,
+  feeCents: number,
+  now = new Date().toISOString(),
+): Promise<void> {
+  await db
+    .prepare(
+      `
+    INSERT INTO week_entry_fees (season, week, fee_cents, updated_at)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT (season, week) DO UPDATE SET
+      fee_cents = excluded.fee_cents,
+      updated_at = excluded.updated_at`,
+    )
+    .bind(season, week, feeCents, now)
+    .run();
+}
+
 export async function listSeasons(db: D1Database): Promise<number[]> {
   const { results } = await db
     .prepare(

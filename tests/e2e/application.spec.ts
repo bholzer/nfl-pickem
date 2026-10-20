@@ -297,7 +297,8 @@ test("season totals rank archived weeks from frozen boards and fit every navigat
     exact: true,
   });
   await expect(table).toBeVisible();
-  // Rank, Correct, Wins, Played, Accuracy, Best, Worst, Avg.
+  // Rank, Correct, Wins, P/L, Played, Accuracy, Best, Worst, Avg. Each
+  // historical week is a $5 two-player pot: Rival won two, Player won one.
   await expect(
     table
       .getByRole("row")
@@ -305,7 +306,17 @@ test("season totals rank archived weeks from frozen boards and fit every navigat
         has: page.getByRole("rowheader", { name: /^Rehearsal Rival\b/ }),
       })
       .getByRole("cell"),
-  ).toHaveText(["1", "2/6", "2", "3", "33.3%", "1 (Wk 1)", "0 (Wk 2)", "0.7"]);
+  ).toHaveText([
+    "1",
+    "2/6",
+    "2",
+    "+$5.00",
+    "3",
+    "33.3%",
+    "1 (Wk 1)",
+    "0 (Wk 2)",
+    "0.7",
+  ]);
   await expect(
     table
       .getByRole("row")
@@ -313,7 +324,17 @@ test("season totals rank archived weeks from frozen boards and fit every navigat
         has: page.getByRole("rowheader", { name: /^Rehearsal Player\b/ }),
       })
       .getByRole("cell"),
-  ).toHaveText(["2", "1/6", "1", "3", "16.7%", "1 (Wk 2)", "0 (Wk 1)", "0.3"]);
+  ).toHaveText([
+    "2",
+    "1/6",
+    "1",
+    "-$5.00",
+    "3",
+    "16.7%",
+    "1 (Wk 2)",
+    "0 (Wk 1)",
+    "0.3",
+  ]);
   await expect(
     page.getByText("Season complete", { exact: true }),
   ).toBeVisible();

@@ -20,9 +20,30 @@ const season: SeasonData = {
   phase: "in_progress",
   inProgressWeek: 3,
   weeks: [
-    { week: 1, status: "final", playerCount: 2, winners: [alice] },
-    { week: 2, status: "incomplete", playerCount: 2, winners: [] },
-    { week: 3, status: "in_progress", playerCount: 1, winners: [] },
+    {
+      week: 1,
+      status: "final",
+      playerCount: 2,
+      winners: [alice],
+      entryFeeCents: 2000,
+      potCents: 4000,
+    },
+    {
+      week: 2,
+      status: "incomplete",
+      playerCount: 2,
+      winners: [],
+      entryFeeCents: 500,
+      potCents: 1000,
+    },
+    {
+      week: 3,
+      status: "in_progress",
+      playerCount: 1,
+      winners: [],
+      entryFeeCents: 500,
+      potCents: 500,
+    },
   ],
   players: [
     {
@@ -36,6 +57,9 @@ const season: SeasonData = {
       bestWeek: { week: 1, correctPicks: 12 },
       worstWeek: { week: 1, correctPicks: 12 },
       averageCorrect: 12,
+      feesPaidCents: 3000,
+      winningsCents: 4000,
+      netCents: 1000,
     },
     {
       user: bob,
@@ -48,6 +72,9 @@ const season: SeasonData = {
       bestWeek: null,
       worstWeek: null,
       averageCorrect: null,
+      feesPaidCents: 2000,
+      winningsCents: 0,
+      netCents: -2000,
     },
   ],
   checkedAt: "2026-10-04T12:00:00.000Z",
@@ -129,6 +156,7 @@ describe("season page", () => {
       "1",
       "20/30",
       "1",
+      "+$10.00",
       "3",
       "66.7%",
       "12 (Wk 1)",
@@ -140,7 +168,7 @@ describe("season page", () => {
       within(bobRow)
         .getAllByRole("cell")
         .map((cell) => cell.textContent),
-    ).toEqual(["2", "0/0", "0", "1", "—", "—", "—", "—"]);
+    ).toEqual(["2", "0/0", "0", "-$20.00", "1", "—", "—", "—", "—"]);
 
     const strip = screen.getByRole("region", {
       name: "Your season at a glance",
@@ -148,13 +176,20 @@ describe("season page", () => {
     expect(strip).toHaveTextContent("Your place#1of 2 players");
     expect(strip).toHaveTextContent("Correct20/30");
     expect(strip).toHaveTextContent("Weekly wins1");
+    expect(strip).toHaveTextContent("P/L+$10.00");
     expect(screen.getByText("Season in progress")).toBeVisible();
     expect(screen.getByText("1 week final · Week 3 in progress")).toBeVisible();
 
     const weeks = screen.getByRole("region", { name: "Weekly results" });
-    expect(within(weeks).getByText("Final · 2 players")).toBeVisible();
-    expect(within(weeks).getByText("Incomplete · 2 players")).toBeVisible();
-    expect(within(weeks).getByText("In progress · 1 player")).toBeVisible();
+    expect(
+      within(weeks).getByText("Final · 2 players · Pot $40.00"),
+    ).toBeVisible();
+    expect(
+      within(weeks).getByText("Incomplete · 2 players · Pot $10.00"),
+    ).toBeVisible();
+    expect(
+      within(weeks).getByText("In progress · 1 player · Pot $5.00"),
+    ).toBeVisible();
     expect(within(weeks).getByText("Winner: Alice")).toBeVisible();
     expect(
       within(weeks).getByRole("link", { name: "View standings for Week 2" }),

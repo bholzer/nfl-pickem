@@ -63,6 +63,8 @@ describe("season aggregation", () => {
         status: "final",
         playerCount: 3,
         winners: [{ id: 1, username: "Player 1" }],
+        entryFeeCents: 500,
+        potCents: 1500,
       },
       {
         week: 2,
@@ -72,6 +74,8 @@ describe("season aggregation", () => {
           { id: 2, username: "Player 2" },
           { id: 3, username: "Player 3" },
         ]) as unknown,
+        entryFeeCents: 500,
+        potCents: 1500,
       },
     ]);
     expect(weeks[1]?.winners).toHaveLength(2);
@@ -87,6 +91,9 @@ describe("season aggregation", () => {
         bestWeek: { week: 2, correctPicks: 2 },
         worstWeek: { week: 1, correctPicks: 1 },
         averageCorrect: 1.5,
+        feesPaidCents: 1000,
+        winningsCents: 750,
+        netCents: -250,
       },
       {
         user: { id: 1, username: "Player 1" },
@@ -99,6 +106,9 @@ describe("season aggregation", () => {
         bestWeek: { week: 1, correctPicks: 2 },
         worstWeek: { week: 2, correctPicks: 0 },
         averageCorrect: 1,
+        feesPaidCents: 1000,
+        winningsCents: 1500,
+        netCents: 500,
       },
       {
         user: { id: 3, username: "Player 3" },
@@ -111,6 +121,9 @@ describe("season aggregation", () => {
         bestWeek: { week: 2, correctPicks: 2 },
         worstWeek: { week: 1, correctPicks: 0 },
         averageCorrect: 1,
+        feesPaidCents: 1000,
+        winningsCents: 750,
+        netCents: -250,
       },
     ]);
   });
@@ -157,14 +170,25 @@ describe("season aggregation", () => {
       null,
       now,
     );
+    // The lone submitter still pays, but nobody collects that pot.
     expect(weeks[1]).toEqual({
       week: 2,
       status: "final",
       playerCount: 1,
       winners: [],
+      entryFeeCents: 500,
+      potCents: 500,
     });
     expect(players).toMatchObject([
-      { user: { id: 1 }, correctPicks: 4, weeklyWins: 1, weeksPlayed: 2 },
+      {
+        user: { id: 1 },
+        correctPicks: 4,
+        weeklyWins: 1,
+        weeksPlayed: 2,
+        feesPaidCents: 1000,
+        winningsCents: 1000,
+        netCents: 0,
+      },
       {
         user: { id: 2 },
         correctPicks: 0,
@@ -198,6 +222,8 @@ describe("season aggregation", () => {
       status: "upcoming",
       playerCount: 2,
       winners: [],
+      entryFeeCents: 500,
+      potCents: 0,
     });
     expect(players[0]).toMatchObject({
       user: { id: 1 },
@@ -216,6 +242,9 @@ describe("season aggregation", () => {
       bestWeek: null,
       worstWeek: null,
       averageCorrect: null,
+      feesPaidCents: 0,
+      winningsCents: 0,
+      netCents: 0,
     });
   });
 
@@ -246,7 +275,14 @@ describe("season aggregation", () => {
     ];
     const live = aggregateSeason([week(3, games, submissions)], 3, now);
     expect(live.weeks).toEqual([
-      { week: 3, status: "in_progress", playerCount: 2, winners: [] },
+      {
+        week: 3,
+        status: "in_progress",
+        playerCount: 2,
+        winners: [],
+        entryFeeCents: 500,
+        potCents: 1000,
+      },
     ]);
     expect(live.players[0]).toMatchObject({
       user: { id: 1 },
@@ -294,8 +330,15 @@ describe("season aggregation", () => {
       status: "in_progress",
       playerCount: 2,
       winners: [{ id: 1, username: "Player 1" }],
+      entryFeeCents: 500,
+      potCents: 1000,
     });
-    expect(players[0]).toMatchObject({ user: { id: 1 }, weeklyWins: 1 });
+    expect(players[0]).toMatchObject({
+      user: { id: 1 },
+      weeklyWins: 1,
+      winningsCents: 1000,
+      netCents: 500,
+    });
   });
 
   it("decides a tied game without crediting it and ignores orphan picks", () => {
@@ -338,6 +381,93 @@ describe("season aggregation", () => {
       accuracy: null,
       weeksPlayed: 1,
     });
+  });
+});
+
+describe("pool winnings", () => {
+  it("charges configured fees only for started weeks and splits a tied pot in whole cents", () => {
+    const { weeks, players } = aggregateSeason(
+      [
+        // Players 2 and 3 tie with equal tiebreakers: 1515 cents splits 757 each.
+        week(1, twoFinals, [
+          entry(1, 1, 1, { "1": "away-1", "2": "away-2" }),
+          entry(2, 2, 1, { "1": "home-1", "2": "home-2" }),
+          entry(3, 3, 1, { "1": "home-1", "2": "home-2" }),
+        ]),
+        week(
+          2,
+          [{ id: "1", status: "STATUS_IN_PROGRESS" }],
+          [
+            entry(4, 1, 2, { "1": "home-1" }),
+            entry(5, 2, 2, { "1": "away-1" }),
+          ],
+        ),
+        week(
+          3,
+          [{ id: "1", date: future }],
+          [
+            entry(6, 1, 3, { "1": "home-1" }),
+            entry(7, 3, 3, { "1": "away-1" }),
+          ],
+        ),
+      ],
+      2,
+      now,
+      new Map([
+        [1, 505],
+        [3, 900],
+      ]),
+    );
+    expect(
+      weeks.map(({ week, entryFeeCents, potCents }) => [
+        week,
+        entryFeeCents,
+        potCents,
+      ]),
+    ).toEqual([
+      [1, 505, 1515],
+      [2, 500, 1000],
+      [3, 900, 0],
+    ]);
+    expect(
+      players.map((player) => [
+        player.user.id,
+        player.feesPaidCents,
+        player.winningsCents,
+        player.netCents,
+      ]),
+    ).toEqual([
+      [2, 1005, 757, -248],
+      [3, 505, 757, 252],
+      [1, 1005, 0, -1005],
+    ]);
+  });
+
+  it("collects the fee without awarding a pot for an incomplete week", () => {
+    const { weeks, players } = aggregateSeason(
+      [
+        week(
+          3,
+          [
+            { id: "1", status: final },
+            { id: "2", status: "STATUS_IN_PROGRESS" },
+          ],
+          [
+            entry(1, 1, 3, { "1": "home-1", "2": "home-2" }),
+            entry(2, 2, 3, { "1": "away-1", "2": "away-2" }),
+          ],
+        ),
+      ],
+      null,
+      now,
+    );
+    expect(weeks[0]).toMatchObject({
+      status: "incomplete",
+      winners: [],
+      entryFeeCents: 500,
+      potCents: 1000,
+    });
+    expect(players.map((player) => player.netCents)).toEqual([-500, -500]);
   });
 });
 

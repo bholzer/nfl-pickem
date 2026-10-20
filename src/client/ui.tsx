@@ -30,6 +30,14 @@ export const centralTime = new Intl.DateTimeFormat("en-US", {
   minute: "2-digit",
   timeZoneName: "short",
 });
+/** Formats whole cents as US dollars. */
+export function usd(cents: number, signed = false) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    signDisplay: signed ? "exceptZero" : "auto",
+  }).format(cents / 100);
+}
 
 export function StatStrip({
   label,

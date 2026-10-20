@@ -1111,7 +1111,7 @@
   .standings-table tbody tr[data-current-user="true"] {
     background: var(--accent-soft);
   }
-  /* Nine season columns scroll inside their region rather than crushing names. */
+  /* Ten season columns scroll inside their region rather than crushing names. */
   .season-table th,
   .season-table td {
     white-space: nowrap;

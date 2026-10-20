@@ -223,6 +223,22 @@ is unavailable. Only weeks with submissions are read. Weekly winners use the sam
 standings calculation as Discord: a lone submitter never wins, and an early
 clinched leader does.
 
+The same response carries pool profit and loss. Every player with a submission in
+a started week (final, in progress, or incomplete) pays that week's entry fee;
+upcoming weeks charge nothing. The pot is the fee times that week's players and
+is split evenly, in whole cents, among the week's winners. Leftover cents from an
+uneven split stay unassigned rather than inventing a tiebreak. A lone submitter
+pays but never wins, and a week that resolves no winner awards nothing, so those
+pots stay unawarded. Per-player `feesPaidCents`, `winningsCents`, and `netCents`
+feed the Season page's P/L column, and each week reports its `potCents`.
+
+Administrators set the fee per season and week under Account, Entry fees
+(`GET`/`PUT /api/admin/entry-fees`, CSRF-protected). Weeks without a saved row use
+`DEFAULT_ENTRY_FEE_CENTS` (500 cents, $5). Fees are stored as whole cents, never
+floats, and are capped at 100000 cents. Migration `0006_entry_fees.sql` adds the
+season-scoped `week_entry_fees` table; changing a fee recomputes the next season
+read without touching stored submissions or snapshots.
+
 Migration `0005_scoreboard_snapshots.sql` adds `scoreboard_snapshots`, which stores
 a week's normalized ESPN scoreboard once every game is final. Game results, not
 derived standings, are stored. The season endpoint fills it on read: this GET has
