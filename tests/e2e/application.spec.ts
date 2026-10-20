@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import type { Locator, Page } from "@playwright/test";
 import type {
   JobRun,
   SessionData,
@@ -267,6 +268,97 @@ test("historical IDs and same-week season switching keep archived picks and stan
   ).toBeEnabled();
 });
 
+// Rank, Correct, then Wins, P/L, Played, Accuracy, Best, Worst, Avg. Each
+// historical week is a $5 two-player pot: Rival won two, Player won one.
+const seasonStatLabels = [
+  "Wins",
+  "P/L",
+  "Played",
+  "Accuracy",
+  "Best",
+  "Worst",
+  "Avg",
+];
+const historicalTotals = [
+  {
+    name: "Rehearsal Rival",
+    current: false,
+    rank: "1",
+    correct: "2/6",
+    stats: ["2", "+$5.00", "3", "33.3%", "1 (Wk 1)", "0 (Wk 2)", "0.7"],
+  },
+  {
+    name: "Rehearsal Player",
+    current: true,
+    rank: "2",
+    correct: "1/6",
+    stats: ["1", "-$5.00", "3", "16.7%", "1 (Wk 2)", "0 (Wk 1)", "0.3"],
+  },
+];
+
+// Phones replace the season table with a roster list; the table must leave the
+// accessibility tree rather than merely scroll. Desktop keeps the table.
+async function expectSeasonStandings(
+  page: Page,
+  season: number,
+  mobile: boolean,
+) {
+  if (!mobile) {
+    const table = page.getByRole("table", {
+      name: `${season} season standings`,
+      exact: true,
+    });
+    await expect(table).toBeVisible();
+    return table;
+  }
+  // The roster is not named by season, so wait for the heading's season first.
+  await expect(page.locator(".page-eyebrow")).toHaveText(`${season} season`);
+  await expect(page.getByRole("table")).toBeHidden();
+  await expect(
+    page.getByRole("region", { name: "Season standings", exact: true }),
+  ).toBeHidden();
+  const roster = page.getByRole("list", {
+    name: "Season standings",
+    exact: true,
+  });
+  await expect(roster).toBeVisible();
+  return roster;
+}
+
+async function expectHistoricalTotals(
+  page: Page,
+  standings: Locator,
+  mobile: boolean,
+) {
+  for (const totals of historicalTotals) {
+    if (!mobile) {
+      await expect(
+        standings
+          .getByRole("row")
+          .filter({
+            has: page.getByRole("rowheader", {
+              name: new RegExp(`^${totals.name}\\b`),
+            }),
+          })
+          .getByRole("cell"),
+      ).toHaveText([totals.rank, totals.correct, ...totals.stats]);
+      continue;
+    }
+    const item = standings
+      .getByRole("listitem")
+      .filter({ hasText: totals.name });
+    await expect(item.locator(".season-roster-rank")).toHaveText(totals.rank);
+    await expect(item.locator(".season-roster-correct")).toHaveText(
+      `Correct ${totals.correct}`,
+    );
+    await expect(item.getByRole("term")).toHaveText(seasonStatLabels);
+    await expect(item.getByRole("definition")).toHaveText(totals.stats);
+    expect(await item.getAttribute("data-current-user")).toBe(
+      totals.current ? "true" : null,
+    );
+  }
+}
+
 test("season totals rank archived weeks from frozen boards and fit every navigation width", async ({
   page,
   rehearsal,
@@ -292,49 +384,13 @@ test("season totals rank archived weeks from frozen boards and fit every navigat
       exact: true,
     })
     .click();
-  const table = page.getByRole("table", {
-    name: `${rehearsal.historicalSeason} season standings`,
-    exact: true,
-  });
-  await expect(table).toBeVisible();
-  // Rank, Correct, Wins, P/L, Played, Accuracy, Best, Worst, Avg. Each
-  // historical week is a $5 two-player pot: Rival won two, Player won one.
-  await expect(
-    table
-      .getByRole("row")
-      .filter({
-        has: page.getByRole("rowheader", { name: /^Rehearsal Rival\b/ }),
-      })
-      .getByRole("cell"),
-  ).toHaveText([
-    "1",
-    "2/6",
-    "2",
-    "+$5.00",
-    "3",
-    "33.3%",
-    "1 (Wk 1)",
-    "0 (Wk 2)",
-    "0.7",
-  ]);
-  await expect(
-    table
-      .getByRole("row")
-      .filter({
-        has: page.getByRole("rowheader", { name: /^Rehearsal Player\b/ }),
-      })
-      .getByRole("cell"),
-  ).toHaveText([
-    "2",
-    "1/6",
-    "1",
-    "-$5.00",
-    "3",
-    "16.7%",
-    "1 (Wk 2)",
-    "0 (Wk 1)",
-    "0.3",
-  ]);
+  const mobile = testInfo.project.name === "mobile-dark";
+  const historical = await expectSeasonStandings(
+    page,
+    rehearsal.historicalSeason,
+    mobile,
+  );
+  await expectHistoricalTotals(page, historical, mobile);
   await expect(
     page.getByText("Season complete", { exact: true }),
   ).toBeVisible();
@@ -358,12 +414,7 @@ test("season totals rank archived weeks from frozen boards and fit every navigat
   await page
     .getByRole("option", { name: `${rehearsal.season} season`, exact: true })
     .click();
-  await expect(
-    page.getByRole("table", {
-      name: `${rehearsal.season} season standings`,
-      exact: true,
-    }),
-  ).toBeVisible();
+  await expectSeasonStandings(page, rehearsal.season, mobile);
   const currentWeeks = page.getByRole("region", { name: "Weekly results" });
   await expect(
     currentWeeks
@@ -381,13 +432,22 @@ test("season totals rank archived weeks from frozen boards and fit every navigat
       page:
         (document.scrollingElement?.scrollWidth ?? Infinity) <=
         window.innerWidth,
+      // The season standings must never widen the document sideways.
+      document:
+        document.documentElement.scrollWidth <=
+        document.documentElement.clientWidth,
+      standings: document.querySelector(".season-roster")?.checkVisibility()
+        ? "roster"
+        : "table",
       links: Array.from(
         document.querySelectorAll<HTMLElement>(".app-navigation .nav-link"),
         (link) => link.scrollWidth <= link.clientWidth,
       ),
     }));
-    expect(layout, `Navigation fits at ${width}px`).toEqual({
+    expect(layout, `Season page fits at ${width}px`).toEqual({
       page: true,
+      document: true,
+      standings: width < 768 ? "roster" : "table",
       links: [true, true, true, true, true],
     });
     await page.screenshot({

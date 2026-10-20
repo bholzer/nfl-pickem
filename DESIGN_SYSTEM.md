@@ -223,7 +223,7 @@ rather than widening the page. Empty standings provide a direct route to picking
 
 Season mirrors Standings: page toolbar with the season picker, a three-part strip
 (your place, correct picks, weekly wins), one contextual phase line, the ranked
-table, and a divided Weekly results list linking to each week's standings.
+standings, and a divided Weekly results list linking to each week's standings.
 
 - Every total, rank, accuracy, and average comes from the server; the browser only
   formats numbers and shows "—" for null values. Never compute percentages here.
@@ -233,8 +233,17 @@ table, and a divided Weekly results list linking to each week's standings.
 - Use the literal phase labels (Season in progress, Season complete, Season hasn't
   started) and week labels (Final, In progress, Incomplete, Upcoming). An
   Incomplete week is never described as in progress.
-- The nine-column table keeps numbers on one line and player names readable, and
-  scrolls inside a focusable region rather than widening the page.
+- The ranked standings have two renderings, split at 768px. At 768px and up the
+  ten-column table keeps numbers on one line and player names readable, and
+  scrolls inside a focusable region rather than widening the page. Below 768px
+  the same players appear as a divided roster: one bordered panel with one item
+  per player in server rank order, a header line of rank, name (with the You
+  badge), and the bold correct/decided fraction, then a four-column grid of
+  Wins, P/L, Played, Accuracy, Best, Worst, and Avg under uppercase stat labels.
+  Both renderings share one formatter, and the current user's item uses the
+  table row's soft accent background. The stylesheet displays only one of them,
+  so assistive technology hears a single structure; do not restyle the table
+  into a grid or add a JavaScript viewport hook.
 - The page sends only the season; the URL keeps any week so other navigation
   retains its context. An empty season links directly to picking.
 

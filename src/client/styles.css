@@ -1120,6 +1120,51 @@
     min-width: 128px;
     white-space: normal;
   }
+  /* Below 768px the table yields to this divided roster; both render and the
+     media rules display one of them. */
+  .season-roster {
+    display: none;
+    padding: 0;
+    overflow: hidden;
+  }
+  .season-roster > li + li {
+    border-top: 1px solid var(--line);
+  }
+  .season-roster-item {
+    padding: 16px;
+  }
+  .season-roster-item[data-current-user="true"] {
+    background: var(--accent-soft);
+  }
+  .season-roster-heading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+  }
+  .season-roster-rank {
+    flex-shrink: 0;
+    min-width: 2ch;
+  }
+  .season-roster-heading .standing-player {
+    flex: 1;
+    min-width: 0;
+  }
+  .season-roster-correct {
+    flex-shrink: 0;
+  }
+  .season-roster-stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px 8px;
+    margin-top: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+  .season-roster-stats dd {
+    margin-top: 2px;
+    font-size: 13px;
+  }
   .standing-player {
     display: flex;
     align-items: center;
@@ -1430,6 +1475,14 @@
   .standing-player {
     gap: 6px;
   }
+  /* The season table only fits phones by scrolling; show the roster instead. */
+  .season-table-region {
+    display: none;
+  }
+  .season-roster {
+    display: block;
+    padding: 0;
+  }
   .sign-in-panel {
     margin-block: 4vh;
     padding: 28px;
@@ -1460,6 +1513,12 @@
   .standings-table th,
   .standings-table td {
     padding-inline: 8px;
+  }
+  .season-roster-item {
+    padding: 14px 12px;
+  }
+  .season-roster-stats {
+    gap: 10px 6px;
   }
   .app-navigation {
     gap: 2px;

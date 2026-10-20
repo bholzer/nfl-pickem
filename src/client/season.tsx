@@ -96,6 +96,35 @@ function SeasonOverview({
   );
 }
 
+// Every figure after Correct, in table column order. The table and the phone
+// roster both read from here so the two renderings never disagree.
+function seasonStats(player: SeasonPlayerTotals) {
+  return [
+    { label: "Wins", value: String(player.weeklyWins) },
+    { label: "P/L", value: usd(player.netCents, true) },
+    { label: "Played", value: String(player.weeksPlayed) },
+    { label: "Accuracy", value: formatStat(player.accuracy, percent) },
+    { label: "Best", value: weekScore(player.bestWeek) },
+    { label: "Worst", value: weekScore(player.worstWeek) },
+    { label: "Avg", value: formatStat(player.averageCorrect, average) },
+  ];
+}
+
+function PlayerName({
+  player,
+  current,
+}: {
+  player: SeasonPlayerTotals;
+  current: boolean;
+}) {
+  return (
+    <span className="standing-player">
+      <span className="min-w-0">{player.user.username ?? "Pool member"}</span>{" "}
+      {current && <span className="you-badge">You</span>}
+    </span>
+  );
+}
+
 function SeasonRow({
   player,
   current,
@@ -107,21 +136,12 @@ function SeasonRow({
     <tr data-current-user={current || undefined}>
       <td className="font-semibold">{player.rank}</td>
       <th scope="row">
-        <span className="standing-player">
-          <span className="min-w-0">
-            {player.user.username ?? "Pool member"}
-          </span>{" "}
-          {current && <span className="you-badge">You</span>}
-        </span>
+        <PlayerName player={player} current={current} />
       </th>
       <td className="font-bold">{correctOfDecided(player)}</td>
-      <td>{player.weeklyWins}</td>
-      <td>{usd(player.netCents, true)}</td>
-      <td>{player.weeksPlayed}</td>
-      <td>{formatStat(player.accuracy, percent)}</td>
-      <td>{weekScore(player.bestWeek)}</td>
-      <td>{weekScore(player.worstWeek)}</td>
-      <td>{formatStat(player.averageCorrect, average)}</td>
+      {seasonStats(player).map((stat) => (
+        <td key={stat.label}>{stat.value}</td>
+      ))}
     </tr>
   );
 }
@@ -135,7 +155,7 @@ function SeasonTable({
 }) {
   return (
     <div
-      className="table-scroll"
+      className="table-scroll season-table-region"
       tabIndex={0}
       role="region"
       aria-label="Season standings"
@@ -167,6 +187,58 @@ function SeasonTable({
         </tbody>
       </table>
     </div>
+  );
+}
+
+function SeasonRosterItem({
+  player,
+  current,
+}: {
+  player: SeasonPlayerTotals;
+  current: boolean;
+}) {
+  return (
+    <li className="season-roster-item" data-current-user={current || undefined}>
+      <div className="season-roster-heading">
+        <span className="season-roster-rank font-semibold">{player.rank}</span>
+        <PlayerName player={player} current={current} />
+        <span className="season-roster-correct font-bold">
+          <span className="sr-only">Correct </span>
+          {correctOfDecided(player)}
+        </span>
+      </div>
+      <dl className="season-roster-stats">
+        {seasonStats(player).map((stat) => (
+          <div key={stat.label}>
+            <dt className="stat-label">{stat.label}</dt>
+            <dd>{stat.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </li>
+  );
+}
+
+// Phones get this divided roster instead of the ten-column table. Both render;
+// the stylesheet displays one per viewport, which also keeps the hidden one out
+// of the accessibility tree.
+function SeasonRoster({
+  data,
+  userId,
+}: {
+  data: SeasonData;
+  userId: number | undefined;
+}) {
+  return (
+    <ol className="panel season-roster" aria-label="Season standings">
+      {data.players.map((player) => (
+        <SeasonRosterItem
+          key={player.user.id}
+          player={player}
+          current={player.user.id === userId}
+        />
+      ))}
+    </ol>
   );
 }
 
@@ -231,6 +303,7 @@ function SeasonView({ data }: { data: SeasonData }) {
     <div className="space-y-5">
       <SeasonOverview data={data} userId={user?.id} />
       <SeasonTable data={data} userId={user?.id} />
+      <SeasonRoster data={data} userId={user?.id} />
       <SeasonWeeks data={data} />
     </div>
   );
