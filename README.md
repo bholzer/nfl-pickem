@@ -194,8 +194,10 @@ sequencing rather than fragmenting behavior solely for a score.
   and week. Scheduled delivery is gated outside the current regular season.
 
 ESPN requests use `site.web.api.espn.com` and explicitly select `dates=<season>`,
-`seasontype=2`, and `week`. The previous `site.api.espn.com` host returned HTTP 403
-from Cloudflare Workers. Both scoreboard and event metadata are checked against
+`seasontype=2`, and `week`. If that host returns HTTP 403, requests retry once on
+`site.api.espn.com` with the same query and shared ten-second deadline. Both hosts
+have independently rejected Cloudflare Worker traffic; season discovery uses the
+same fallback. Both scoreboard and event metadata are checked against
 the requested period; postseason week numbers cannot become regular-season picks.
 Current-season discovery follows ESPN metadata, not the calendar year. Default
 views use Week 1 in preseason and Week 18 after the regular season.

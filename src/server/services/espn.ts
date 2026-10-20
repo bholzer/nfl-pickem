@@ -8,6 +8,7 @@ import { validSeason, validWeek } from "../../shared/season";
 
 const SCOREBOARD_URL =
   "https://site.web.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard";
+const FALLBACK_HOST = "site.api.espn.com";
 const REQUEST_TIMEOUT_MS = 10_000;
 
 export class EspnError extends Error {
@@ -292,10 +293,19 @@ async function request(url: URL): Promise<unknown> {
     controller.abort();
   }, REQUEST_TIMEOUT_MS);
   try {
-    const response = await fetch(url, {
+    const options = {
       signal: controller.signal,
       headers: { Accept: "application/json" },
-    });
+    };
+    let response = await fetch(url, options);
+    // ESPN's two scoreboard hosts can independently reject Worker traffic.
+    // Keep the same period and shared deadline, and validate either response.
+    if (response.status === 403) {
+      void response.body?.cancel().catch(() => undefined);
+      const fallback = new URL(url);
+      fallback.hostname = FALLBACK_HOST;
+      response = await fetch(fallback, options);
+    }
     if (!response.ok) {
       throw new EspnError(`ESPN request failed (${response.status})`);
     }

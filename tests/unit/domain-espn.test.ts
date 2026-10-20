@@ -12,6 +12,8 @@ import { network } from "../setup-network";
 
 const endpoint =
   "https://site.web.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard";
+const fallbackEndpoint =
+  "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard";
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
@@ -72,6 +74,77 @@ it("loads an explicit historical period without depending on current-season disc
     week: 3,
     games: [{ id: "historical-game" }],
   });
+});
+
+it("falls back after a 403 for both season discovery and the selected week", async () => {
+  const queries: string[] = [];
+  network.use(
+    http.get(endpoint, () => new HttpResponse("Forbidden", { status: 403 })),
+    http.get(fallbackEndpoint, ({ request }) => {
+      const url = new URL(request.url);
+      queries.push(url.search);
+      return HttpResponse.json(espnScoreboard([espnEvent()], 6, 2026));
+    }),
+  );
+  expect(await fetchScoreboard()).toMatchObject({
+    season: 2026,
+    week: 6,
+    games: [{ id: "401" }],
+  });
+  expect(queries).toEqual(["", "?dates=2026&seasontype=2&week=6"]);
+});
+
+it("preserves an explicit historical period on the fallback host", async () => {
+  const queries: string[] = [];
+  network.use(
+    http.get(endpoint, () => new HttpResponse(null, { status: 403 })),
+    http.get(fallbackEndpoint, ({ request }) => {
+      queries.push(new URL(request.url).search);
+      return HttpResponse.json(espnScoreboard([espnEvent()], 3, 2025));
+    }),
+  );
+  expect(await fetchScoreboard({ season: 2025, week: 3 })).toMatchObject({
+    season: 2025,
+    week: 3,
+  });
+  expect(queries).toEqual(["?dates=2025&seasontype=2&week=3"]);
+});
+
+it("does not use the fallback when the primary host succeeds", async () => {
+  const fallback = vi.fn(() => HttpResponse.json(espnScoreboard()));
+  network.use(
+    http.get(endpoint, () => HttpResponse.json(espnScoreboard())),
+    http.get(fallbackEndpoint, fallback),
+  );
+  await fetchScoreboard({ season: 2026, week: 1 });
+  expect(fallback).not.toHaveBeenCalled();
+});
+
+it.each([
+  { label: "season", season: 2025, week: 6 },
+  { label: "week", season: 2026, week: 5 },
+])("rejects fallback data for the wrong $label", async ({ season, week }) => {
+  network.use(
+    http.get(endpoint, () => new HttpResponse(null, { status: 403 })),
+    http.get(fallbackEndpoint, () =>
+      HttpResponse.json(espnScoreboard([espnEvent()], week, season)),
+    ),
+  );
+  await expect(fetchScoreboard({ season: 2026, week: 6 })).rejects.toThrow(
+    "different season or week",
+  );
+});
+
+it("fails closed without looping when both hosts return 403", async () => {
+  const fallback = vi.fn(() => new HttpResponse(null, { status: 403 }));
+  network.use(
+    http.get(endpoint, () => new HttpResponse(null, { status: 403 })),
+    http.get(fallbackEndpoint, fallback),
+  );
+  await expect(fetchScoreboard({ season: 2026, week: 6 })).rejects.toThrow(
+    "403",
+  );
+  expect(fallback).toHaveBeenCalledOnce();
 });
 
 it("normalizes event competition IDs, final ties and zero scores without inventing winners", () => {
@@ -442,4 +515,33 @@ it("aborts a stalled request at its deadline instead of leaving callers waiting"
   await vi.advanceTimersByTimeAsync(10_000);
   await pending;
   expect(aborted).toBe(true);
+});
+
+it("keeps the fallback within the original ten-second request deadline", async () => {
+  vi.useFakeTimers();
+  let fallbackAborted = false;
+  const fetchMock = vi.fn((url: URL, options: RequestInit) => {
+    if (url.hostname === "site.web.api.espn.com") {
+      return new Promise<Response>((resolve) => {
+        setTimeout(() => {
+          resolve(new Response(null, { status: 403 }));
+        }, 9_000);
+      });
+    }
+    return new Promise<Response>((_resolve, reject) => {
+      assert(options.signal);
+      options.signal.addEventListener("abort", () => {
+        fallbackAborted = true;
+        reject(new DOMException("Aborted", "AbortError"));
+      });
+    });
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  const pending = expect(
+    fetchScoreboard({ season: 2026, week: 6 }),
+  ).rejects.toBeInstanceOf(EspnError);
+  await vi.advanceTimersByTimeAsync(10_000);
+  await pending;
+  expect(fetchMock).toHaveBeenCalledTimes(2);
+  expect(fallbackAborted).toBe(true);
 });
