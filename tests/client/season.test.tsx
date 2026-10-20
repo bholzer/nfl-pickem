@@ -170,6 +170,32 @@ describe("season page", () => {
         .map((cell) => cell.textContent),
     ).toEqual(["2", "0/0", "0", "-$20.00", "1", "—", "—", "—", "—"]);
 
+    // jsdom applies no media queries, so the phone roster renders beside the
+    // table; it must carry the same formatted figures in the same order.
+    const roster = screen.getByRole("list", { name: "Season standings" });
+    const [aliceItem, bobItem] = within(roster).getAllByRole("listitem");
+    if (!aliceItem || !bobItem) {
+      throw new Error("Season roster items are missing");
+    }
+    expect(aliceItem).toHaveAttribute("data-current-user", "true");
+    expect(aliceItem).toHaveTextContent(
+      "1Alice YouCorrect 20/30Wins1P/L+$10.00Played3Accuracy66.7%Best12 (Wk 1)Worst12 (Wk 1)Avg12.0",
+    );
+    expect(
+      within(aliceItem)
+        .getAllByRole("term")
+        .map((term) => term.textContent),
+    ).toEqual(["Wins", "P/L", "Played", "Accuracy", "Best", "Worst", "Avg"]);
+    expect(
+      within(aliceItem)
+        .getAllByRole("definition")
+        .map((definition) => definition.textContent),
+    ).toEqual(["1", "+$10.00", "3", "66.7%", "12 (Wk 1)", "12 (Wk 1)", "12.0"]);
+    expect(bobItem).not.toHaveAttribute("data-current-user");
+    expect(bobItem).toHaveTextContent(
+      "2Bob Correct 0/0Wins0P/L-$20.00Played1Accuracy—Best—Worst—Avg—",
+    );
+
     const strip = screen.getByRole("region", {
       name: "Your season at a glance",
     });

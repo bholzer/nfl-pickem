@@ -72,6 +72,8 @@ a Weekly results list links each week to its standings. The current week is
 included live and labeled **In progress**; a started week that ESPN has moved
 past without finishing (a cancelled or postponed game) is labeled **Incomplete**
 and excluded from best, worst, and average. All totals come from the server.
+Screens 768px and wider show the ten-column table; phones show the same totals
+as a divided per-player roster instead of a sideways-scrolling table.
 
 Unsubmitted picks can recover from this device's local storage, scoped to the
 authenticated user, season, and week. A draft is **not a submission**: users must
