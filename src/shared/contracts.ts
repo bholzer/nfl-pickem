@@ -157,6 +157,10 @@ export interface SeasonWeekSummary {
   status: SeasonWeekStatus;
   playerCount: number;
   winners: Pick<User, "id" | "username">[];
+  /** Whole cents each player paid to enter this week. */
+  entryFeeCents: number;
+  /** Fee times players for started weeks; 0 while the week is upcoming. */
+  potCents: number;
 }
 
 export interface SeasonWeekScore {
@@ -178,6 +182,20 @@ export interface SeasonPlayerTotals {
   bestWeek: SeasonWeekScore | null;
   worstWeek: SeasonWeekScore | null;
   averageCorrect: number | null;
+  /** Whole cents: fees for every started week, pot shares won, and their difference. */
+  feesPaidCents: number;
+  winningsCents: number;
+  netCents: number;
+}
+
+/** Weekly entry fee charged when an administrator has not configured a week. */
+export const DEFAULT_ENTRY_FEE_CENTS = 500;
+
+export interface SeasonEntryFees {
+  season: number;
+  defaultFeeCents: number;
+  /** Weeks 1–18; `configured` is false when the default applies. */
+  weeks: { week: number; feeCents: number; configured: boolean }[];
 }
 
 export interface SeasonData {

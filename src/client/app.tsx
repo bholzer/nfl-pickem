@@ -24,6 +24,7 @@ import { clearDraftsForUser, clearExpiredDrafts } from "./drafts";
 import { DashboardPage } from "./dashboard";
 import { ReceiptPage } from "./receipts";
 import { SeasonPage } from "./season";
+import { EntryFeesPage } from "./entry-fees";
 
 function AccountMenu({ query }: { query: string }) {
   const session = useSession();
@@ -101,6 +102,9 @@ function AccountMenu({ query }: { query: string }) {
             </NavLink>
             <NavLink className="nav-link" to={`/admin/jobs${query}`}>
               Jobs
+            </NavLink>
+            <NavLink className="nav-link" to={`/admin/entry-fees${query}`}>
+              Entry fees
             </NavLink>
           </nav>
         )}
@@ -339,6 +343,7 @@ export function App() {
               />
               <Route path="admin/jobs" element={<JobsPage />} />
               <Route path="admin/jobs/:id" element={<JobDetailPage />} />
+              <Route path="admin/entry-fees" element={<EntryFeesPage />} />
             </Route>
           </Route>
           <Route

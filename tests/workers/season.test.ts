@@ -103,9 +103,25 @@ describe("season totals", () => {
         status: "final",
         playerCount: 2,
         winners: [{ id: viewer.user.id, username: viewer.user.username }],
+        entryFeeCents: 500,
+        potCents: 1000,
       },
-      { week: 2, status: "in_progress", playerCount: 2, winners: [] },
-      { week: 3, status: "upcoming", playerCount: 2, winners: [] },
+      {
+        week: 2,
+        status: "in_progress",
+        playerCount: 2,
+        winners: [],
+        entryFeeCents: 500,
+        potCents: 1000,
+      },
+      {
+        week: 3,
+        status: "upcoming",
+        playerCount: 2,
+        winners: [],
+        entryFeeCents: 500,
+        potCents: 0,
+      },
     ]);
     expect(data.players).toEqual([
       {
@@ -119,6 +135,9 @@ describe("season totals", () => {
         bestWeek: { week: 1, correctPicks: 2 },
         worstWeek: { week: 1, correctPicks: 2 },
         averageCorrect: 2,
+        feesPaidCents: 1000,
+        winningsCents: 1000,
+        netCents: 0,
       },
       {
         user: { id: rival.user.id, username: rival.user.username },
@@ -131,6 +150,9 @@ describe("season totals", () => {
         bestWeek: { week: 1, correctPicks: 1 },
         worstWeek: { week: 1, correctPicks: 1 },
         averageCorrect: 1,
+        feesPaidCents: 1000,
+        winningsCents: 0,
+        netCents: -1000,
       },
     ]);
     const serialized = JSON.stringify(data);

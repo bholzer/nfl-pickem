@@ -1,15 +1,16 @@
-import type {
-  Scoreboard,
-  SeasonData,
-  SeasonPlayerTotals,
-  SeasonWeekScore,
-  SeasonWeekStatus,
-  SeasonWeekSummary,
-  SubmissionWithUser,
-  User,
+import {
+  DEFAULT_ENTRY_FEE_CENTS,
+  type Scoreboard,
+  type SeasonData,
+  type SeasonPlayerTotals,
+  type SeasonWeekScore,
+  type SeasonWeekStatus,
+  type SeasonWeekSummary,
+  type SubmissionWithUser,
+  type User,
 } from "../../shared/contracts";
 import type { Env } from "../env";
-import { listSeasonSubmissions } from "../db";
+import { listSeasonEntryFees, listSeasonSubmissions } from "../db";
 import type { SeasonContext } from "./espn";
 import { loadScoreboard } from "./scoreboards";
 import {
@@ -26,11 +27,15 @@ interface SeasonWeekInput {
   submissions: SubmissionWithUser[];
 }
 
+/** Week number to configured fee in whole cents; absent weeks use the default. */
+type EntryFees = ReadonlyMap<number, number>;
+
 interface WeekResult {
   user: PublicUser;
   correctPicks: number;
   decidedPicks: number;
   winner: boolean;
+  winningsCents: number;
 }
 
 interface MutableTotals {
@@ -39,6 +44,8 @@ interface MutableTotals {
   decidedPicks: number;
   weeklyWins: number;
   weeksPlayed: number;
+  feesPaidCents: number;
+  winningsCents: number;
   finalWeeks: SeasonWeekScore[];
 }
 
@@ -63,6 +70,7 @@ function classifyWeek(
 
 function weekResults(
   { scoreboard, submissions }: SeasonWeekInput,
+  entryFeeCents: number,
   current: boolean,
   now: number,
 ): { summary: SeasonWeekSummary; results: WeekResult[] } {
@@ -79,21 +87,38 @@ function weekResults(
     ]),
   );
   const standings = calculateStandings(submissions, scoreboard);
-  const results = standings.map((standing) => ({
-    user: { id: standing.user.id, username: standing.user.username },
-    correctPicks: standing.correctPicks,
-    decidedPicks: decided.get(standing.submissionId) ?? 0,
-    // Matches Discord: a lone submitter never wins, a clinched leader does.
-    winner: standing.winner && standings.length > 1,
-  }));
+  // Matches Discord: a lone submitter never wins, a clinched leader does.
+  const winners = standings.filter(
+    (standing) => standing.winner && standings.length > 1,
+  );
+  const status = classifyWeek(scoreboard, current, now);
+  // Every submitter pays once the week starts; a lone submitter's fee stays in
+  // an unawarded pot, as does the pot of a week that never resolves a winner.
+  const potCents =
+    status === "upcoming" ? 0 : entryFeeCents * submissions.length;
+  // Tied winners split the pot in whole cents. Any leftover cents (fewer than
+  // one per winner) stay unassigned rather than inventing a tiebreak.
+  const share = winners.length ? Math.floor(potCents / winners.length) : 0;
+  const results = standings.map((standing) => {
+    const winner = winners.includes(standing);
+    return {
+      user: { id: standing.user.id, username: standing.user.username },
+      correctPicks: standing.correctPicks,
+      decidedPicks: decided.get(standing.submissionId) ?? 0,
+      winner,
+      winningsCents: winner ? share : 0,
+    };
+  });
   return {
     summary: {
       week: scoreboard.week,
-      status: classifyWeek(scoreboard, current, now),
+      status,
       playerCount: submissions.length,
       winners: results
         .filter((result) => result.winner)
         .map((result) => result.user),
+      entryFeeCents,
+      potCents,
     },
     results,
   };
@@ -113,6 +138,8 @@ function accumulate(
         decidedPicks: 0,
         weeklyWins: 0,
         weeksPlayed: 0,
+        feesPaidCents: 0,
+        winningsCents: 0,
         finalWeeks: [],
       };
       totals.set(result.user.id, entry);
@@ -125,6 +152,8 @@ function accumulate(
     entry.decidedPicks += result.decidedPicks;
     entry.weeksPlayed += 1;
     entry.weeklyWins += result.winner ? 1 : 0;
+    entry.feesPaidCents += summary.entryFeeCents;
+    entry.winningsCents += result.winningsCents;
     if (summary.status === "final") {
       entry.finalWeeks.push({
         week: summary.week,
@@ -160,6 +189,7 @@ function finishTotals({
     bestWeek,
     worstWeek,
     averageCorrect: finalWeeks.length ? finalCorrect / finalWeeks.length : null,
+    netCents: totals.winningsCents - totals.feesPaidCents,
   };
 }
 
@@ -187,11 +217,13 @@ export function aggregateSeason(
   weeks: SeasonWeekInput[],
   currentWeek: number | null,
   now: number,
+  entryFees: EntryFees = new Map(),
 ): Pick<SeasonData, "weeks" | "players"> {
   const totals = new Map<number, MutableTotals>();
   const summaries = weeks.map((week) => {
     const { summary, results } = weekResults(
       week,
+      entryFees.get(week.scoreboard.week) ?? DEFAULT_ENTRY_FEE_CENTS,
       week.scoreboard.week === currentWeek,
       now,
     );
@@ -222,10 +254,11 @@ export async function seasonSummary(
   season: number,
   context: SeasonContext,
 ): Promise<SeasonData> {
-  const byWeek = Map.groupBy(
-    await listSeasonSubmissions(env.DB, season),
-    (submission) => submission.week,
-  );
+  const [submissions, entryFees] = await Promise.all([
+    listSeasonSubmissions(env.DB, season),
+    listSeasonEntryFees(env.DB, season),
+  ]);
+  const byWeek = Map.groupBy(submissions, (submission) => submission.week);
   const weeks = await Promise.all(
     [...byWeek].map(async ([week, submissions]) => ({
       scoreboard: await loadScoreboard(env, { season, week }),
@@ -235,7 +268,7 @@ export async function seasonSummary(
   const currentWeek =
     context.season === season && context.seasonType === 2 ? context.week : null;
   const now = Date.now();
-  const totals = aggregateSeason(weeks, currentWeek, now);
+  const totals = aggregateSeason(weeks, currentWeek, now, entryFees);
   return {
     season,
     phase: seasonPhase(season, context),

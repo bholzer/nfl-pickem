@@ -2,17 +2,25 @@ import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import type { HonoRequest } from "hono";
 import { HTTPException } from "hono/http-exception";
-import type { Picks, PublicReceipt, Scoreboard } from "../shared/contracts";
+import {
+  DEFAULT_ENTRY_FEE_CENTS,
+  type Picks,
+  type PublicReceipt,
+  type Scoreboard,
+  type SeasonEntryFees,
+} from "../shared/contracts";
 import { validSeason, validWeek } from "../shared/season";
-import type { AppBindings } from "./env";
+import type { AppBindings, Env } from "./env";
 import { readSession, requireAdmin, requireCsrf, requireUser } from "./auth";
 import {
   getSubmission,
   getSubmissionById,
+  listSeasonEntryFees,
   listSeasons,
   listUserSubmissions,
   listWeekSubmissions,
   saveSubmission,
+  setWeekEntryFee,
 } from "./db";
 import { getFrozenReceipt, type FrozenReceipt } from "./receipts";
 import { dashboard } from "./services/dashboard";
@@ -146,6 +154,65 @@ function validateSubmission(body: {
     return { valid: true, picks, tiebreaker };
   }
   return { valid: false, fields };
+}
+
+/** Whole cents; the cap keeps a mistyped dollar amount from becoming a $1,000 week. */
+const MAX_ENTRY_FEE_CENTS = 100_000;
+
+function validFeeCents(value: unknown): value is number {
+  return (
+    typeof value === "number" &&
+    Number.isInteger(value) &&
+    value >= 0 &&
+    value <= MAX_ENTRY_FEE_CENTS
+  );
+}
+
+type EntryFeeInput =
+  | { valid: true; season: number; week: number; feeCents: number }
+  | { valid: false; fields: Record<string, string> };
+
+function validateEntryFee(body: unknown): EntryFeeInput {
+  const { season, week, feeCents } = (
+    body && typeof body === "object" ? body : {}
+  ) as { season?: unknown; week?: unknown; feeCents?: unknown };
+  const fields: Record<string, string> = {};
+  const seasonValid = validSeason(season);
+  const weekValid = validWeek(week);
+  const feeValid = validFeeCents(feeCents);
+  if (!seasonValid) {
+    fields.season = "Season must be an integer from 1920 to 9999";
+  }
+  if (!weekValid) {
+    fields.week = "Week must be an integer from 1 to 18";
+  }
+  if (!feeValid) {
+    fields.feeCents = `Fee must be whole cents from 0 to ${MAX_ENTRY_FEE_CENTS}`;
+  }
+  if (seasonValid && weekValid && feeValid) {
+    return { valid: true, season, week, feeCents };
+  }
+  return { valid: false, fields };
+}
+
+async function seasonEntryFees(
+  db: Env["DB"],
+  season: number,
+): Promise<SeasonEntryFees> {
+  const configured = await listSeasonEntryFees(db, season);
+  return {
+    season,
+    defaultFeeCents: DEFAULT_ENTRY_FEE_CENTS,
+    weeks: Array.from({ length: 18 }, (_, index) => {
+      const week = index + 1;
+      const feeCents = configured.get(week);
+      return {
+        week,
+        feeCents: feeCents ?? DEFAULT_ENTRY_FEE_CENTS,
+        configured: feeCents !== undefined,
+      };
+    }),
+  };
 }
 
 function receiptBoardCovered(
@@ -399,4 +466,20 @@ apiRoutes.get("/admin/submissions/:id", requireAdmin, async (c) => {
   return c.json(
     await submissionDetail(submission, await fetchScoreboard(submission)),
   );
+});
+
+apiRoutes.get("/admin/entry-fees", requireAdmin, async (c) => {
+  const requested = parseSeason(c.req.query("season"));
+  const season = requested ?? (await getSeasonContext()).season;
+  return c.json(await seasonEntryFees(c.env.DB, season));
+});
+
+apiRoutes.put("/admin/entry-fees", requireAdmin, requireCsrf, async (c) => {
+  const input = validateEntryFee(await c.req.json<unknown>().catch(() => null));
+  if (!input.valid) {
+    return c.json({ error: "Invalid entry fee", fields: input.fields }, 422);
+  }
+  const { season, week, feeCents } = input;
+  await setWeekEntryFee(c.env.DB, { season, week }, feeCents);
+  return c.json(await seasonEntryFees(c.env.DB, season));
 });

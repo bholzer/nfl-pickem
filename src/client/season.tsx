@@ -6,7 +6,7 @@ import type {
   SeasonWeekStatus,
 } from "../shared/contracts";
 import { useResource, useSession } from "./api";
-import { PageHeading, ResourceView, SeasonPicker, StatStrip } from "./ui";
+import { PageHeading, ResourceView, SeasonPicker, StatStrip, usd } from "./ui";
 
 const percent = new Intl.NumberFormat("en-US", {
   style: "percent",
@@ -78,6 +78,7 @@ function SeasonOverview({
             },
             { label: "Correct", value: correctOfDecided(mine) },
             { label: "Weekly wins", value: mine.weeklyWins },
+            { label: "P/L", value: usd(mine.netCents, true) },
           ]}
         />
       ) : (
@@ -115,6 +116,7 @@ function SeasonRow({
       </th>
       <td className="font-bold">{correctOfDecided(player)}</td>
       <td>{player.weeklyWins}</td>
+      <td>{usd(player.netCents, true)}</td>
       <td>{player.weeksPlayed}</td>
       <td>{formatStat(player.accuracy, percent)}</td>
       <td>{weekScore(player.bestWeek)}</td>
@@ -146,6 +148,7 @@ function SeasonTable({
             <th scope="col">Player</th>
             <th scope="col">Correct</th>
             <th scope="col">Wins</th>
+            <th scope="col">P/L</th>
             <th scope="col">Played</th>
             <th scope="col">Accuracy</th>
             <th scope="col">Best</th>
@@ -180,6 +183,7 @@ function SeasonWeeks({ data }: { data: SeasonData }) {
               <h3 className="font-semibold">Week {week.week}</h3>
               <p className="muted">
                 {weekLabels[week.status]} · {plural(week.playerCount, "player")}
+                {week.status !== "upcoming" && ` · Pot ${usd(week.potCents)}`}
               </p>
               {week.winners.length > 0 && (
                 <p>
