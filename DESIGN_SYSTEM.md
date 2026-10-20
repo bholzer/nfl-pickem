@@ -227,6 +227,9 @@ table, and a divided Weekly results list linking to each week's standings.
 
 - Every total, rank, accuracy, and average comes from the server; the browser only
   formats numbers and shows "—" for null values. Never compute percentages here.
+  Correct reads as correct/decided (`42/64`, `0/0` before any result) in both the
+  strip and the table, and accuracy shows one decimal (`65.6%`), so the fraction
+  behind each percentage is visible.
 - Use the literal phase labels (Season in progress, Season complete, Season hasn't
   started) and week labels (Final, In progress, Incomplete, Upcoming). An
   Incomplete week is never described as in progress.

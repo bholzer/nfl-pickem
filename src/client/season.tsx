@@ -10,7 +10,8 @@ import { PageHeading, ResourceView, SeasonPicker, StatStrip } from "./ui";
 
 const percent = new Intl.NumberFormat("en-US", {
   style: "percent",
-  maximumFractionDigits: 0,
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
 });
 const average = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 1,
@@ -36,6 +37,14 @@ function plural(count: number, noun: string) {
 
 function formatStat(value: number | null, format: Intl.NumberFormat) {
   return value === null ? "—" : format.format(value);
+}
+
+// Correct over decided shows the accuracy denominator; 0/0 is still a real
+// fraction, so it never collapses to a dash.
+function correctOfDecided(
+  totals: Pick<SeasonPlayerTotals, "correctPicks" | "decidedPicks">,
+) {
+  return `${totals.correctPicks}/${totals.decidedPicks}`;
 }
 
 function weekScore(entry: SeasonWeekScore | null) {
@@ -67,7 +76,7 @@ function SeasonOverview({
                 ? `of ${plural(data.players.length, "player")}`
                 : "Awaiting results",
             },
-            { label: "Correct", value: mine.correctPicks },
+            { label: "Correct", value: correctOfDecided(mine) },
             { label: "Weekly wins", value: mine.weeklyWins },
           ]}
         />
@@ -104,7 +113,7 @@ function SeasonRow({
           {current && <span className="you-badge">You</span>}
         </span>
       </th>
-      <td className="font-bold">{player.correctPicks}</td>
+      <td className="font-bold">{correctOfDecided(player)}</td>
       <td>{player.weeklyWins}</td>
       <td>{player.weeksPlayed}</td>
       <td>{formatStat(player.accuracy, percent)}</td>

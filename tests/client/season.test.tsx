@@ -125,19 +125,28 @@ describe("season page", () => {
       within(aliceRow)
         .getAllByRole("cell")
         .map((cell) => cell.textContent),
-    ).toEqual(["1", "20", "1", "3", "67%", "12 (Wk 1)", "12 (Wk 1)", "12.0"]);
+    ).toEqual([
+      "1",
+      "20/30",
+      "1",
+      "3",
+      "66.7%",
+      "12 (Wk 1)",
+      "12 (Wk 1)",
+      "12.0",
+    ]);
     expect(bobRow).not.toHaveAttribute("data-current-user");
     expect(
       within(bobRow)
         .getAllByRole("cell")
         .map((cell) => cell.textContent),
-    ).toEqual(["2", "0", "0", "1", "—", "—", "—", "—"]);
+    ).toEqual(["2", "0/0", "0", "1", "—", "—", "—", "—"]);
 
     const strip = screen.getByRole("region", {
       name: "Your season at a glance",
     });
     expect(strip).toHaveTextContent("Your place#1of 2 players");
-    expect(strip).toHaveTextContent("Correct20");
+    expect(strip).toHaveTextContent("Correct20/30");
     expect(strip).toHaveTextContent("Weekly wins1");
     expect(screen.getByText("Season in progress")).toBeVisible();
     expect(screen.getByText("1 week final · Week 3 in progress")).toBeVisible();
