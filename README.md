@@ -399,13 +399,9 @@ one ledger entry. Unreadable payment emails appear in the payments review as
 failures, keeping only a truncated subject and a reason; bodies, notes, and
 addresses are never stored or logged. Non-payment Venmo email is dropped.
 
-Ingestion is production only. Set two secrets on the production Worker by name,
-never in `wrangler.jsonc`:
-
-```sh
-npx --no-install wrangler secret put VENMO_INBOX_ADDRESS --name nfl-pickem-production
-npx --no-install wrangler secret put VENMO_FORWARDER_ADDRESS --name nfl-pickem-production
-```
+Ingestion is production only. Set two plain-text variables on the production
+Worker in the dashboard (Settings, Variables and Secrets). This repository is
+public, so they are never committed to `wrangler.jsonc`:
 
 - `VENMO_INBOX_ADDRESS`: an unguessable address on the Email Routing zone, such
   as `venmo-<random>@example.com`, whose routing rule sends it to the production
@@ -413,12 +409,15 @@ npx --no-install wrangler secret put VENMO_FORWARDER_ADDRESS --name nfl-pickem-p
 - `VENMO_FORWARDER_ADDRESS`: the banker's Gmail address. The envelope sender must
   be this mailbox; Gmail's `+caf_=...` forwarding tag is accepted.
 
-They must be secrets, not plain-text variables. A release keeps secrets that are
-missing from its secrets file, but replaces plain-text variables with the ones in
-the generated configuration, so a dashboard variable disappears on the next
-deploy and the handler silently returns to rejecting all mail.
+The top-level `keep_vars` setting in `wrangler.jsonc` tells Wrangler to keep
+dashboard-set variables on release; without it a release replaces them with the
+configured ones and the handler silently returns to rejecting all mail. It
+applies to every environment, so the dashboard is the source of truth for any
+variable absent from the configuration. After a release, confirm both variables
+are still present. If they are ever lost, store them as Worker secrets instead,
+which a release always preserves.
 
-Without both secrets (as in staging and local development), the handler rejects
+Without both values (as in staging and local development), the handler rejects
 all mail. Rejections log only a fixed reason code (`not_configured`,
 `recipient_mismatch`, `forwarder_mismatch`, `too_large`, or `unparseable`) for
 diagnosis with `wrangler tail`. During `MAINTENANCE_MODE` the handler fails
@@ -436,7 +435,7 @@ This is not cryptographic authentication: it relies on the inbox address staying
 secret, the envelope-sender check, and the `From: venmo@venmo.com` header, all of
 which a determined sender who learns the address could forge. Imported payments
 without a known name and pool keyword still wait for review. Rotate the inbox
-address (new routing rule, secret, and Gmail verification) if it leaks.
+address (new routing rule, variable, and Gmail verification) if it leaks.
 
 ### Routine migrations
 
