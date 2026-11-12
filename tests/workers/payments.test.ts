@@ -179,6 +179,8 @@ describe("payments ledger administration", () => {
       players: [],
       entries: [],
       users: [{ id: admin.user.id, username: admin.user.username }],
+      venmoAccounts: [],
+      keywords: [],
     });
   });
 
@@ -211,6 +213,8 @@ describe("payments ledger administration", () => {
         source: "manual",
         status: "approved",
         note: "Venmo",
+        venmoName: null,
+        venmoTransactionId: null,
         paidAt: "2026-09-10T12:00:00.000Z",
         createdAt: expect.any(String) as unknown,
         voidedAt: null,

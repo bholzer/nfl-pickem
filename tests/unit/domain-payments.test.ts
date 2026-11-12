@@ -57,6 +57,8 @@ function payment(
     source: "manual",
     status,
     note: null,
+    venmoName: null,
+    venmoTransactionId: null,
     paidAt: "2026-09-10T12:00:00.000Z",
     createdAt: "2026-09-10T12:00:00.000Z",
     voidedAt: status === "voided" ? "2026-09-11T12:00:00.000Z" : null,

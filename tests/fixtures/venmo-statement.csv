@@ -1,0 +1,17 @@
+Account Statement - (@Robin-Ledger) ,,,,,,,,,,,,,,,,,,,,,
+Account Activity,,,,,,,,,,,,,,,,,,,,,
+,ID,Datetime,Type,Status,Note,From,To,Amount (total),Amount (tip),Amount (tax),Amount (fee),Tax Rate,Tax Exempt,Funding Source,Destination,Beginning Balance,Ending Balance,Statement Period Venmo Fees,Terminal Location,Year to Date Venmo Fees,Disclaimer
+,,,,,,,,,,,,,,,,$10.00,,,,,
+,4100000000000000001,2026-09-10T18:22:11,Payment,Complete,"Pickem week 1, thanks!",Avery Quinn,Robin Ledger,+ $5.00,,0,,0,,,Venmo balance,,,,Venmo,,
+,4100000000000000002,2026-09-11T01:05:00,Charge,Complete,"Pickem fees ""weeks 1-3""",Robin Ledger,Jordan Blake,+ $15.00,,0,,0,,Venmo balance,,,,,Venmo,,
+,4100000000000000003,2026-09-12T09:00:00,Payment,Complete,"Dinner
+split",Casey Morgan,Robin Ledger,"+ $1,250.50",,0,,0,,,Venmo balance,,,,Venmo,,
+,4100000000000000004,2026-09-14T16:30:00,Payment,Complete,pickem week 1 winnings,Robin Ledger,Avery Quinn,- $20.00,,0,,0,,Venmo balance,,,,,Venmo,,
+,4100000000000000005,2026-09-15T12:00:00,Standard Transfer,Issued,,,,- $50.00,,0,,0,,,Synthetic Bank *0000,,,,Venmo,,
+,4100000000000000006,2026-09-15T13:00:00,Payment,Pending,pickem,Sam Rivers,Robin Ledger,+ $5.00,,0,,0,,,Venmo balance,,,,Venmo,,
+,4100000000000000007,2026-09-16T10:00:00,Charge,Complete,Pickem buy-in,Taylor Reed,Robin Ledger,- $5.00,,0,,0,,Venmo balance,,,,,Venmo,,
+,4100000000000000008,2027-01-05T03:15:00,Payment,Complete,pickem playoffs,Jordan Blake,Robin Ledger,+ $10.00,,0,,0,,,Venmo balance,,,,Venmo,,
+,4100000000000000009,not a date,Payment,Complete,pickem,Avery Quinn,Robin Ledger,+ $5.00,,0,,0,,,Venmo balance,,,,Venmo,,
+,4100000000000000010,2026-09-17T10:00:00,Payment,Complete,pickem,Avery Quinn,Robin Ledger,+ $0.00,,0,,0,,,Venmo balance,,,,Venmo,,
+,,,,,,,,,,,,,,,,,$955.50,$0.00,,$0.00,
+In case of errors or questions about your electronic transfers please contact the synthetic support line.,,,,,,,,,,,,,,,,,,,,,

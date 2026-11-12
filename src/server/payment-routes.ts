@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import { HTTPException } from "hono/http-exception";
 import type { ManualPaymentInput, PaymentDirection } from "../shared/contracts";
 import { validSeason } from "../shared/season";
 import type { AppBindings, Env } from "./env";
@@ -10,9 +9,17 @@ import {
   setBankerUserId,
   voidPaymentEntry,
 } from "./ledger";
+import {
+  failedFields,
+  objectBody,
+  parseId,
+  validUserId,
+  type Validated,
+} from "./payment-input";
 import { parseSeason } from "./params";
 import { getSeasonContext } from "./services/espn";
 import { paymentsData } from "./services/payments";
+import { venmoRoutes } from "./venmo-routes";
 
 /** Whole cents; the cap keeps a mistyped amount from becoming a $10,000 payment. */
 const MAX_PAYMENT_CENTS = 1_000_000;
@@ -20,14 +27,6 @@ const MAX_NOTE_LENGTH = 280;
 // A timestamp with an explicit zone; a bare date would shift a local day to UTC midnight.
 const isoTimestamp =
   /^(\d{4})-(\d{2})-(\d{2})T(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d{1,9})?)?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/;
-
-type Fields = Record<string, string>;
-type Validated<T> =
-  { valid: true; value: T } | { valid: false; fields: Fields };
-
-function validUserId(value: unknown): value is number {
-  return typeof value === "number" && Number.isSafeInteger(value) && value > 0;
-}
 
 function validDirection(value: unknown): value is PaymentDirection {
   return value === "in" || value === "out";
@@ -76,12 +75,6 @@ function normalizeNote(value: unknown): string | null | undefined {
   return note || null;
 }
 
-function objectBody(body: unknown): Record<string, unknown> {
-  return body && typeof body === "object" && !Array.isArray(body)
-    ? (body as Record<string, unknown>)
-    : {};
-}
-
 function validateManualPayment(body: unknown): Validated<ManualPaymentInput> {
   const raw = objectBody(body);
   const { season, userId, direction, amountCents } = raw;
@@ -107,11 +100,7 @@ function validateManualPayment(body: unknown): Validated<ManualPaymentInput> {
       `Note must be at most ${MAX_NOTE_LENGTH} characters`,
     ],
   ];
-  const fields: Fields = Object.fromEntries(
-    checks
-      .filter(([, ok]) => !ok)
-      .map(([field, , message]) => [field, message]),
-  );
+  const fields = failedFields(checks);
   if (Object.keys(fields).length > 0) {
     return { valid: false, fields };
   }
@@ -126,13 +115,6 @@ function validateManualPayment(body: unknown): Validated<ManualPaymentInput> {
       note: note as string | null,
     },
   };
-}
-
-function parseEntryId(raw: string): number {
-  if (!/^[1-9]\d*$/.test(raw) || !Number.isSafeInteger(Number(raw))) {
-    throw new HTTPException(400, { message: "Invalid payment ID" });
-  }
-  return Number(raw);
 }
 
 /** Null clears the banker; undefined marks an unknown or malformed user. */
@@ -183,12 +165,12 @@ paymentRoutes.post("/", requireCsrf, async (c) => {
 paymentRoutes.post("/:id/void", requireCsrf, async (c) => {
   const result = await voidPaymentEntry(
     c.env.DB,
-    parseEntryId(c.req.param("id")),
+    parseId(c.req.param("id"), "Invalid payment ID"),
   );
   if (result.status === "not_found") {
     return c.json({ error: "Payment not found" }, 404);
   }
-  if (result.status === "not_approved") {
+  if (result.status === "conflict") {
     return c.json({ error: "Only an approved payment can be voided" }, 409);
   }
   return c.json(
@@ -212,3 +194,5 @@ paymentRoutes.put("/banker", requireCsrf, async (c) => {
     await paymentsData(c.env, requested ?? context.season, context),
   );
 });
+
+paymentRoutes.route("/", venmoRoutes);

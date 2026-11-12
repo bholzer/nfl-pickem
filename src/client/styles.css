@@ -82,17 +82,19 @@
   }
   button,
   select,
-  input {
+  input,
+  textarea {
     font: inherit;
   }
   button,
   a,
   input,
   select,
+  textarea,
   summary {
     touch-action: manipulation;
   }
-  :is(button, a, input, select, summary):focus-visible {
+  :is(button, a, input, select, textarea, summary):focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 4px;
   }
@@ -584,6 +586,68 @@
   .ledger-voided {
     color: var(--muted);
     text-decoration: line-through;
+  }
+  /* Imported payments awaiting a decision; the full note stays visible. */
+  .review-list {
+    padding: 0;
+    overflow: hidden;
+  }
+  .review-list > li + li,
+  .venmo-accounts > li + li {
+    border-top: 1px solid var(--line);
+  }
+  .review-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 16px;
+  }
+  .review-heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    font-size: 14px;
+    overflow-wrap: anywhere;
+  }
+  .review-note {
+    margin-bottom: 10px;
+    font-size: 14px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .ledger-ignored {
+    color: var(--muted);
+  }
+  /* A set-up-once disclosure: the summary is a full-width 44px target. */
+  .setup-disclosure > summary {
+    display: flex;
+    min-height: 44px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    font-weight: 600;
+  }
+  .setup-disclosure > summary::after {
+    /* The disclosure already announces its state; the hint is visual only. */
+    content: "Show";
+    content: "Show" / "";
+    color: var(--accent);
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+  .setup-disclosure[open] > summary::after {
+    content: "Hide";
+    content: "Hide" / "";
+  }
+  .venmo-accounts > li {
+    padding: 16px 0;
+  }
+  .venmo-accounts > li:last-child {
+    padding-bottom: 0;
   }
   .text-link {
     display: inline-flex;
