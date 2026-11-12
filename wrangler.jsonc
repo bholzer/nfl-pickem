@@ -3,9 +3,6 @@
   "name": "nfl-pickem-local",
   "workers_dev": false,
   "preview_urls": false,
-  // Top-level only. Keeps dashboard-set variables (the Venmo inbox addresses,
-  // which must stay out of this public repository) across releases.
-  "keep_vars": true,
   "vars": {
     "APP_ENV": "local",
     "APP_ORIGIN": "http://127.0.0.1:5173",
