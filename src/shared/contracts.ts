@@ -198,6 +198,79 @@ export interface SeasonEntryFees {
   weeks: { week: number; feeCents: number; configured: boolean }[];
 }
 
+export type PaymentDirection = "in" | "out";
+export type PaymentSource =
+  "manual" | "venmo_email" | "venmo_csv" | "carryover";
+/** Only approved entries count toward a balance. */
+export type PaymentStatus = "pending" | "approved" | "ignored" | "voided";
+
+/** One movement of money between the banker and a player; never edited, only voided. */
+export interface PaymentEntry {
+  id: number;
+  season: number;
+  /** Null until a pending entry is matched to a player. */
+  userId: number | null;
+  /** `in` is paid to the banker, `out` is paid by the banker. */
+  direction: PaymentDirection;
+  /** Whole cents, always positive. */
+  amountCents: number;
+  source: PaymentSource;
+  status: PaymentStatus;
+  note: string | null;
+  paidAt: string;
+  createdAt: string;
+  voidedAt: string | null;
+}
+
+export interface PaymentPlayerBalance {
+  user: Pick<User, "id" | "username">;
+  /** The banker's own row: counted in the pot but never owing or owed. */
+  banker: boolean;
+  /** Whole cents. Fees and winnings match the season table. */
+  feesCents: number;
+  winningsCents: number;
+  paidInCents: number;
+  paidOutCents: number;
+  /**
+   * paidIn - fees + winnings - paidOut. Negative means the player owes the
+   * banker; positive means the banker owes the player. Always 0 for the banker.
+   */
+  balanceCents: number;
+}
+
+export interface PaymentPoolSummary {
+  /** Approved entries in each direction. */
+  collectedCents: number;
+  paidOutCents: number;
+  /** Sums of negative and positive player balances, both reported positive. */
+  owedToBankerCents: number;
+  owedByBankerCents: number;
+  /** Pots with no winner plus split remainders; the banker holds these. */
+  unawardedCents: number;
+}
+
+export interface PaymentsData {
+  season: number;
+  bankerUserId: number | null;
+  /** Every user with a submission or a ledger entry this season, by username. */
+  players: PaymentPlayerBalance[];
+  /** Newest first; includes voided entries. */
+  entries: PaymentEntry[];
+  /** Every user, for assigning entries and choosing the banker. */
+  users: Pick<User, "id" | "username">[];
+  summary: PaymentPoolSummary;
+}
+
+export interface ManualPaymentInput {
+  season: number;
+  userId: number;
+  direction: PaymentDirection;
+  amountCents: number;
+  /** ISO 8601 timestamp. */
+  paidAt: string;
+  note: string | null;
+}
+
 export interface SeasonData {
   season: number;
   phase: "upcoming" | "in_progress" | "complete";

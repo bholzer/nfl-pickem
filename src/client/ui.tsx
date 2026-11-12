@@ -217,6 +217,8 @@ export function OptionPicker({
   onChange,
   disabled,
   id,
+  invalid,
+  describedBy,
 }: {
   label: string;
   value: string;
@@ -224,6 +226,8 @@ export function OptionPicker({
   onChange: (value: string) => void;
   disabled?: boolean;
   id?: string;
+  invalid?: boolean;
+  describedBy?: string;
 }) {
   // Radix reserves an empty value; prefixing keeps "Current" and "All" selectable.
   return (
@@ -238,6 +242,8 @@ export function OptionPicker({
         id={id}
         className="input option-trigger"
         aria-label={label}
+        aria-invalid={invalid || undefined}
+        aria-describedby={describedBy}
       >
         <Select.Value />
         <Select.Icon asChild>

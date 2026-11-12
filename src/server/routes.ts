@@ -22,6 +22,8 @@ import {
   saveSubmission,
   setWeekEntryFee,
 } from "./db";
+import { parseSeason } from "./params";
+import { paymentRoutes } from "./payment-routes";
 import { getFrozenReceipt, type FrozenReceipt } from "./receipts";
 import { dashboard } from "./services/dashboard";
 import { EspnError, fetchScoreboard, getSeasonContext } from "./services/espn";
@@ -52,26 +54,6 @@ function parseWeek(
   if (!raw || !/^(?:[1-9]|1[0-8])$/.test(raw) || !validWeek(Number(raw))) {
     throw new HTTPException(400, {
       message: "Week must be an integer from 1 to 18",
-    });
-  }
-  return Number(raw);
-}
-
-function parseSeason(raw: string | undefined, required: true): number;
-function parseSeason(
-  raw: string | undefined,
-  required?: false,
-): number | undefined;
-function parseSeason(
-  raw: string | undefined,
-  required = false,
-): number | undefined {
-  if (raw === undefined && !required) {
-    return undefined;
-  }
-  if (!raw || !/^\d{4}$/.test(raw) || !validSeason(Number(raw))) {
-    throw new HTTPException(400, {
-      message: "Season must be an integer from 1920 to 9999",
     });
   }
   return Number(raw);
@@ -483,3 +465,5 @@ apiRoutes.put("/admin/entry-fees", requireAdmin, requireCsrf, async (c) => {
   await setWeekEntryFee(c.env.DB, { season, week }, feeCents);
   return c.json(await seasonEntryFees(c.env.DB, season));
 });
+
+apiRoutes.route("/admin/payments", paymentRoutes);

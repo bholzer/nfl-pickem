@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import type { Locator, Page } from "@playwright/test";
 import type {
   JobRun,
+  PaymentsData,
   SessionData,
   StandingsData,
 } from "../../src/shared/contracts";
@@ -609,4 +610,133 @@ test("administrator creates native Workflow work but delivery policy prevents ev
     path: testInfo.outputPath("native-job-policy.png"),
     fullPage: true,
   });
+});
+
+test("administrator records a manual payment, sees the balance move, and voids it", async ({
+  page,
+  rehearsal,
+}, testInfo) => {
+  const rivalBalance = async () => {
+    const data = (await (
+      await page.request.get(`/api/admin/payments?season=${rehearsal.season}`, {
+        maxRedirects: 0,
+      })
+    ).json()) as PaymentsData;
+    const row = data.players.find(
+      (player) => player.user.username === "Rehearsal Rival",
+    );
+    assert(row, "Rehearsal Rival must have a balance row");
+    return row;
+  };
+  // Mirrors the page's wording: negative owes the banker, positive is owed.
+  const wording = (cents: number) => {
+    const amount = `$${(Math.abs(cents) / 100).toFixed(2)}`;
+    if (cents === 0) {
+      return "Settled";
+    }
+    return cents < 0 ? `Owes ${amount}` : `You owe ${amount}`;
+  };
+
+  await page.goto(rehearsal.links.admin);
+  await expect(
+    page.getByRole("heading", { name: "Make your picks", exact: true }),
+  ).toBeVisible();
+  await page.locator("summary", { hasText: "Account" }).click();
+  await page.getByRole("link", { name: "Payments", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Payments", exact: true }),
+  ).toBeVisible();
+  const before = await rivalBalance();
+  assert(!before.banker, "The rehearsal pool starts without a banker");
+  const balances = page.getByRole("table", {
+    name: `${rehearsal.season} season balances`,
+    exact: true,
+  });
+  const rival = balances.getByRole("row").filter({
+    has: page.getByRole("rowheader", { name: /^Rehearsal Rival\b/ }),
+  });
+  await expect(rival.getByRole("cell").last()).toHaveText(
+    wording(before.balanceCents),
+  );
+
+  await page.getByRole("combobox", { name: "Player", exact: true }).click();
+  await page
+    .getByRole("option", { name: "Rehearsal Rival", exact: true })
+    .click();
+  await page.getByLabel("Amount in dollars", { exact: true }).fill("25");
+  await page
+    .getByLabel("Date paid", { exact: true })
+    .fill(`${rehearsal.season}-10-09`);
+  await page.getByLabel("Note (optional)", { exact: true }).fill("Venmo");
+  const recorded = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === "/api/admin/payments" &&
+      response.request().method() === "POST",
+  );
+  await page
+    .getByRole("button", { name: "Record payment", exact: true })
+    .click();
+  expect((await recorded).status()).toBe(200);
+  await expect(page.getByRole("status")).toHaveText(
+    "Recorded $25.00 received.",
+  );
+  await expect(rival.getByRole("cell").last()).toHaveText(
+    wording(before.balanceCents + 2500),
+  );
+  expect((await rivalBalance()).paidInCents).toBe(before.paidInCents + 2500);
+
+  const history = page.getByRole("table", {
+    name: `${rehearsal.season} season payment history`,
+    exact: true,
+  });
+  const entry = history.getByRole("row").filter({ hasText: "Venmo" });
+  await expect(entry).toContainText("Approved");
+  await entry
+    .getByRole("button", {
+      name: `Void $25.00 received from Rehearsal Rival on Oct 9, ${rehearsal.season}`,
+      exact: true,
+    })
+    .click();
+  await expect(page.getByRole("alert")).toContainText(
+    "stops counting toward balances",
+  );
+  await page.getByRole("button", { name: "Confirm void", exact: true }).click();
+  await expect(page.getByRole("status")).toHaveText("Payment voided.");
+  await expect(rival.getByRole("cell").last()).toHaveText(
+    wording(before.balanceCents),
+  );
+  await expect(entry).toContainText("Voided");
+  await expect(entry.getByRole("button")).toHaveCount(0);
+  expect(await rivalBalance()).toEqual(before);
+
+  for (const width of [320, 375]) {
+    await page.setViewportSize({ width, height: 900 });
+    // Wide tables scroll inside their own region; nothing else may overflow.
+    expect(
+      await page.evaluate(() =>
+        Array.from(document.querySelectorAll<HTMLElement>("main *"))
+          .filter(
+            (element) =>
+              !element.closest(".table-scroll") &&
+              element.getBoundingClientRect().right > window.innerWidth + 0.5,
+          )
+          .map(
+            (element) =>
+              `${element.tagName.toLowerCase()}.${element.className}: ${element.textContent.slice(0, 40)}`,
+          ),
+      ),
+      `Payments page fits at ${width}px`,
+    ).toEqual([]);
+    expect(
+      await page.evaluate(
+        () =>
+          (document.scrollingElement?.scrollWidth ?? Infinity) <=
+          window.innerWidth,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: testInfo.outputPath(`payments-${width}.png`),
+      fullPage: true,
+    });
+  }
 });
