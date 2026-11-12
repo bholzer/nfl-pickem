@@ -13,6 +13,7 @@ import type {
   PaymentsData,
   VenmoAccount,
   VenmoAccountInput,
+  VenmoEmailFailure,
 } from "../../src/shared/contracts";
 import { network } from "../setup-network";
 
@@ -110,6 +111,7 @@ function payments(entries: PaymentEntry[]): PaymentsData {
     },
     venmoAccounts: accounts,
     keywords,
+    emailFailures,
   };
 }
 
@@ -180,6 +182,16 @@ function venmoHandlers() {
       keywords = body.keywords.map((keyword) => keyword.toLowerCase());
       return HttpResponse.json(payments(stored));
     }),
+    http.post(
+      `${base}/email-failures/:id/dismiss`,
+      async ({ params, request }) => {
+        await recordWrite(request);
+        emailFailures = emailFailures.filter(
+          (failure) => failure.id !== Number(params.id),
+        );
+        return HttpResponse.json(payments(stored));
+      },
+    ),
     http.post(`${base}/import`, async ({ request }) => {
       await recordWrite(request);
       stored = [
@@ -207,6 +219,7 @@ let stored: PaymentEntry[];
 let bankerUserId: number | null;
 let accounts: VenmoAccount[];
 let keywords: string[];
+let emailFailures: VenmoEmailFailure[];
 let writes: {
   method: string;
   path: string;
@@ -257,6 +270,7 @@ beforeEach(() => {
     { userId: 3, username: null, displayNames: ["Cara Example"] },
   ];
   keywords = ["pickem"];
+  emailFailures = [];
   network.use(
     http.put(
       "http://localhost/api/admin/payments/banker",
@@ -785,6 +799,129 @@ describe("Venmo review queue", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Only a pending payment can be ignored",
     );
+  });
+});
+
+describe("unread Venmo emails", () => {
+  const subject =
+    "Robert Example paid you $25.00 for a very long note about week 5 picks";
+
+  it("stays hidden when every email was read", async () => {
+    mount("/admin/payments?season=2026");
+    await balances();
+    expect(
+      screen.queryByRole("heading", { name: /Unread Venmo emails/ }),
+    ).toBeNull();
+  });
+
+  it("lists each unread email above the review queue and dismisses it", async () => {
+    emailFailures = [
+      {
+        id: 9,
+        receivedAt: "2026-10-07T17:05:00.000Z",
+        subject,
+        reason: "The amount could not be found",
+      },
+      {
+        id: 8,
+        receivedAt: "2026-10-06T14:00:00.000Z",
+        subject: "You paid Cara Example $10.00",
+        reason: "The sender could not be found",
+      },
+    ];
+    mount("/admin/payments?season=2026");
+    const heading = await screen.findByRole("heading", {
+      name: "Unread Venmo emails (2)",
+    });
+    expect(
+      heading.compareDocumentPosition(
+        screen.getByRole("heading", { name: "Needs review (2)" }),
+      ) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        "These Venmo emails could not be read. Check Venmo and add the payment by hand, then dismiss.",
+      ),
+    ).toBeVisible();
+    const list = screen.getByRole("list", {
+      name: "Venmo emails that could not be read",
+    });
+    const items = within(list).getAllByRole("listitem");
+    expect(items).toHaveLength(2);
+    const [first] = items;
+    if (!first) {
+      throw new Error("Expected an unread email");
+    }
+    expect(within(first).getByText(subject, { selector: "p" })).toBeVisible();
+    expect(first).toHaveTextContent(
+      "Wed, Oct 7, 12:05 PM CDT · The amount could not be found",
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: `Dismiss ${subject}` }),
+    );
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Email dismissed.",
+    );
+    expect(
+      await screen.findByRole("heading", { name: "Unread Venmo emails (1)" }),
+    ).toBeVisible();
+    expect(screen.queryByText(subject)).toBeNull();
+    expect(writes).toEqual([
+      {
+        method: "POST",
+        path: "/api/admin/payments/email-failures/9/dismiss?season=2026",
+        body: null,
+        csrf: "test-csrf",
+      },
+    ]);
+  });
+
+  it("explains a dismissal the server refuses", async () => {
+    emailFailures = [
+      {
+        id: 9,
+        receivedAt: "2026-10-07T17:05:00.000Z",
+        subject,
+        reason: "The amount could not be found",
+      },
+    ];
+    network.use(
+      http.post(
+        "http://localhost/api/admin/payments/email-failures/:id/dismiss",
+        () =>
+          HttpResponse.json(
+            { error: "This email was already dismissed" },
+            { status: 409 },
+          ),
+      ),
+    );
+    mount("/admin/payments?season=2026");
+    await userEvent.click(
+      await screen.findByRole("button", { name: `Dismiss ${subject}` }),
+    );
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "This email was already dismissed",
+    );
+  });
+
+  it("labels an approved email payment by its source in the history", async () => {
+    stored = [
+      entry({
+        id: 7,
+        userId: 2,
+        source: "venmo_email",
+        venmoName: "Bobby Example",
+        note: "pickem",
+      }),
+    ];
+    mount("/admin/payments?season=2026");
+    const history = await screen.findByRole("table", {
+      name: "2026 season payment history",
+    });
+    expect(
+      within(history).getByRole("row", { name: /^Oct 4, 2026 Bob/ }),
+    ).toHaveTextContent(/\$5\.00Venmo emailpickemApproved/);
   });
 });
 

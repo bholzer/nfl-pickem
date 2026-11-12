@@ -10,7 +10,7 @@ import type {
   PaymentsData,
 } from "../shared/contracts";
 import { useMutation, useResource } from "./api";
-import { ReviewQueue } from "./payments-review";
+import { EmailFailures, ReviewQueue } from "./payments-review";
 import {
   describeEntry,
   directionLabels,
@@ -696,6 +696,7 @@ function PaymentsView({
 }) {
   return (
     <div className="space-y-6">
+      <EmailFailures data={data} write={write} />
       <ReviewQueue data={data} write={write} />
       <PaymentSummary summary={data.summary} />
       <section className="space-y-3" aria-labelledby="payment-balances">

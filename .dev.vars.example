@@ -6,3 +6,7 @@ DISCORD_CLIENT_SECRET="local-only-discord-client-secret"
 DISCORD_BOT_TOKEN="local-only-discord-bot-token"
 DISCORD_SEND_ENABLED="false"
 SCHEDULES_ENABLED="false"
+# Venmo email ingestion is production only; leave these unset or empty locally
+# so the email handler rejects all mail. Placeholders only.
+VENMO_INBOX_ADDRESS=""
+VENMO_FORWARDER_ADDRESS=""

@@ -390,6 +390,44 @@ restored in memory and checked against every table and autoincrement high-water
 mark. Backup and release evidence are retained outside the checkout under
 `~/.config/nfl-pickem/backups/production-activation-65zgnr/`.
 
+### Venmo email ingestion
+
+The Worker's `email` handler records Venmo payment notifications through the
+same classification and transaction-ID deduplication as statement imports
+(source `venmo_email`), so an emailed payment and its later statement row are
+one ledger entry. Unreadable payment emails appear in the payments review as
+failures, keeping only a truncated subject and a reason; bodies, notes, and
+addresses are never stored or logged. Non-payment Venmo email is dropped.
+
+Ingestion is production only. Set two secrets with
+`wrangler secret put --env production`, never in `wrangler.jsonc`:
+
+- `VENMO_INBOX_ADDRESS`: an unguessable address on a dedicated Email Routing
+  subdomain, such as `venmo-<random>@mail.example.com`, whose routing rule sends
+  it to the production Worker.
+- `VENMO_FORWARDER_ADDRESS`: the banker's Gmail address. The envelope sender must
+  be this mailbox; Gmail's `+caf_=...` forwarding tag is accepted.
+
+Without both secrets (as in staging and local development), the handler rejects
+all mail. Rejections log only a fixed reason code (`not_configured`,
+`recipient_mismatch`, `forwarder_mismatch`, `too_large`, or `unparseable`) for
+diagnosis with `wrangler tail`. During `MAINTENANCE_MODE` the handler fails
+delivery without writing so the sender retries later.
+
+Gmail must verify a forwarding address before using it. Once, with approval:
+temporarily point the Email Routing rule for the inbox address at a verified
+personal destination, add the inbox address under Gmail's forwarding settings,
+open Google's confirmation link from that destination, then switch the rule to
+send to the Worker. Finally, create a Gmail filter for `from:venmo@venmo.com`
+that forwards to the inbox address. Email Routing rules are dashboard
+configuration outside Terraform and Wrangler, so record changes to them.
+
+This is not cryptographic authentication: it relies on the inbox address staying
+secret, the envelope-sender check, and the `From: venmo@venmo.com` header, all of
+which a determined sender who learns the address could forge. Imported payments
+without a known name and pool keyword still wait for review. Rotate the inbox
+address (new routing rule, secret, and Gmail verification) if it leaks.
+
 ### Routine migrations
 
 Wrangler applies all pending migrations without an application-specific schema

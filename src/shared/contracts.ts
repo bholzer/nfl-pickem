@@ -304,6 +304,17 @@ export interface PaymentsData {
    * when its note contains one and its Venmo name belongs to a player.
    */
   keywords: string[];
+  /** Undismissed, newest first; not scoped to a season. */
+  emailFailures: VenmoEmailFailure[];
+}
+
+/** A Venmo payment email that reached the inbox but could not be read. */
+export interface VenmoEmailFailure {
+  id: number;
+  receivedAt: string;
+  /** The email's subject, truncated; the only part of the message kept. */
+  subject: string;
+  reason: string;
 }
 
 export interface ManualPaymentInput {

@@ -1,7 +1,9 @@
+import type { ExportedHandler } from "@cloudflare/workers-types";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { authRoutes } from "./auth";
-import type { AppBindings } from "./env";
+import { handleEmail } from "./email";
+import type { AppBindings, Env } from "./env";
 import { jobsRoutes } from "./jobs/routes";
 import { apiRoutes } from "./routes";
 import { EspnError } from "./services/espn";
@@ -72,4 +74,7 @@ app.all("/auth/*", (c) => c.json({ error: "Not found" }, 404));
 app.all("/logout", (c) => c.json({ error: "Not found" }, 404));
 app.all("*", (c) => c.env.ASSETS.fetch(c.req.raw));
 
-export default app;
+export default {
+  fetch: app.fetch,
+  email: handleEmail,
+} satisfies ExportedHandler<Env>;
