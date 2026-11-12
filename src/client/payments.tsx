@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import type {
   ManualPaymentInput,
@@ -6,11 +6,35 @@ import type {
   PaymentEntry,
   PaymentPlayerBalance,
   PaymentPoolSummary,
-  PaymentSource,
   PaymentStatus,
   PaymentsData,
 } from "../shared/contracts";
-import { errorMessage, RequestError, useMutation, useResource } from "./api";
+import { useMutation, useResource } from "./api";
+import { ReviewQueue } from "./payments-review";
+import {
+  describeEntry,
+  directionLabels,
+  Field,
+  FieldMessage,
+  fieldMessage,
+  FormError,
+  invalidProps,
+  memberName,
+  memberOptions,
+  paidDate,
+  seasonQuery,
+  sourceLabels,
+  usePaymentWriter,
+  type Member,
+  type PaymentWriter,
+} from "./payments-shared";
+import {
+  ImportStatement,
+  KeywordsForm,
+  VenmoAccounts,
+  venmoLink,
+  venmoNote,
+} from "./payments-venmo";
 import {
   ErrorNotice,
   OptionPicker,
@@ -20,14 +44,6 @@ import {
   usd,
 } from "./ui";
 
-type Member = PaymentsData["users"][number];
-
-const paidDate = new Intl.DateTimeFormat("en-US", {
-  timeZone: "America/Chicago",
-  month: "short",
-  day: "numeric",
-  year: "numeric",
-});
 // en-CA formats as YYYY-MM-DD, the value a date input expects.
 const inputDate = new Intl.DateTimeFormat("en-CA", {
   timeZone: "America/Chicago",
@@ -36,26 +52,12 @@ const inputDate = new Intl.DateTimeFormat("en-CA", {
   day: "2-digit",
 });
 
-const directionLabels: Record<PaymentDirection, string> = {
-  in: "Received from player",
-  out: "Paid to player",
-};
-const sourceLabels: Record<PaymentSource, string> = {
-  manual: "Manual",
-  venmo_email: "Venmo email",
-  venmo_csv: "Venmo CSV",
-  carryover: "Carryover",
-};
 const statusLabels: Record<PaymentStatus, string> = {
   approved: "Approved",
   pending: "Pending review",
   ignored: "Ignored",
   voided: "Voided",
 };
-
-function memberName(member: Pick<Member, "username"> | undefined) {
-  return member?.username ?? "Pool member";
-}
 
 /** Literal wording, so the balance never depends on a sign or color alone. */
 function balanceLabel(
@@ -90,27 +92,6 @@ function sortPlayers(players: PaymentPlayerBalance[]) {
     .map(({ player }) => player);
 }
 
-function fieldMessage(error: unknown, field: string) {
-  return error instanceof RequestError ? error.fields[field] : undefined;
-}
-
-function FieldMessage({ id, message }: { id: string; message?: string }) {
-  return message ? (
-    <p id={id} className="field-error">
-      {message}
-    </p>
-  ) : null;
-}
-
-// Field messages sit beside their controls; this carries the summary.
-function FormError({ error }: { error: unknown }) {
-  return error ? (
-    <p role="alert" className="alert error mb-4">
-      {errorMessage(error)}
-    </p>
-  ) : null;
-}
-
 function PaymentSummary({ summary }: { summary: PaymentPoolSummary }) {
   const items: { label: string; value: number; note?: string }[] = [
     { label: "Collected", value: summary.collectedCents },
@@ -140,7 +121,60 @@ function PaymentSummary({ summary }: { summary: PaymentPoolSummary }) {
   );
 }
 
-function PlayerRow({ player }: { player: PaymentPlayerBalance }) {
+/** Request what a player owes, or pay what the banker owes; Venmo sends nothing until confirmed there. */
+function linkUsername(
+  player: PaymentPlayerBalance,
+  usernames: Map<number, string | null>,
+) {
+  if (player.banker || player.balanceCents === 0) {
+    return null;
+  }
+  return usernames.get(player.user.id) ?? null;
+}
+
+function BalanceLink({
+  player,
+  username,
+  note,
+}: {
+  player: PaymentPlayerBalance;
+  username: string | null;
+  note: string;
+}) {
+  if (!username) {
+    return null;
+  }
+  const owes = player.balanceCents < 0;
+  const amount = usd(Math.abs(player.balanceCents));
+  return (
+    <a
+      className="text-link"
+      href={venmoLink({
+        txn: owes ? "charge" : "pay",
+        username,
+        amountCents: player.balanceCents,
+        note,
+      })}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      {owes ? `Request ${amount}` : `Pay ${amount}`}{" "}
+      <span className="sr-only">
+        {owes ? "from" : "to"} {memberName(player.user)} on Venmo (opens in a
+        new tab)
+      </span>
+    </a>
+  );
+}
+
+function PlayerRow({
+  player,
+  link,
+}: {
+  player: PaymentPlayerBalance;
+  /** Absent when no row in the table has a Venmo link. */
+  link?: { username: string | null; note: string };
+}) {
   return (
     <tr>
       <th scope="row">
@@ -154,6 +188,11 @@ function PlayerRow({ player }: { player: PaymentPlayerBalance }) {
       <td>{usd(player.paidInCents)}</td>
       <td>{usd(player.paidOutCents)}</td>
       <td className="font-semibold">{balanceLabel(player)}</td>
+      {link && (
+        <td>
+          <BalanceLink player={player} {...link} />
+        </td>
+      )}
     </tr>
   );
 }
@@ -166,6 +205,13 @@ function PlayerBalances({ data }: { data: PaymentsData }) {
       </p>
     );
   }
+  const usernames = new Map(
+    data.venmoAccounts.map((account) => [account.userId, account.username]),
+  );
+  const note = venmoNote(data.season, data.keywords);
+  const players = sortPlayers(data.players);
+  // The Venmo column appears only when some player can be sent a link.
+  const linked = players.some((player) => linkUsername(player, usernames));
   return (
     <div
       className="table-scroll"
@@ -183,23 +229,25 @@ function PlayerBalances({ data }: { data: PaymentsData }) {
             <th scope="col">Paid in</th>
             <th scope="col">Paid out</th>
             <th scope="col">Balance</th>
+            {linked && <th scope="col">Venmo</th>}
           </tr>
         </thead>
         <tbody>
-          {sortPlayers(data.players).map((player) => (
-            <PlayerRow key={player.user.id} player={player} />
+          {players.map((player) => (
+            <PlayerRow
+              key={player.user.id}
+              player={player}
+              link={
+                linked
+                  ? { username: linkUsername(player, usernames), note }
+                  : undefined
+              }
+            />
           ))}
         </tbody>
       </table>
     </div>
   );
-}
-
-function memberOptions(users: Member[]) {
-  return users.map((member) => ({
-    value: String(member.id),
-    label: memberName(member),
-  }));
 }
 
 function BankerPicker({
@@ -259,36 +307,6 @@ function draftInput(season: number, draft: EntryDraft): ManualPaymentInput {
     // Noon UTC is the same calendar day in every US time zone.
     paidAt: `${draft.date}T12:00:00.000Z`,
     note: draft.note.trim() || null,
-  };
-}
-
-function Field({
-  id,
-  label,
-  message,
-  wide = false,
-  children,
-}: {
-  id: string;
-  label: string;
-  message?: string;
-  wide?: boolean;
-  children: ReactNode;
-}) {
-  // A wide field takes the full row on phones instead of overflowing it.
-  return (
-    <div className={wide ? "period-select w-full sm:w-64" : "period-select"}>
-      <label htmlFor={id}>{label}</label>
-      {children}
-      <FieldMessage id={`${id}-error`} message={message} />
-    </div>
-  );
-}
-
-function invalidProps(id: string, message: string | undefined) {
-  return {
-    "aria-invalid": message ? true : undefined,
-    "aria-describedby": message ? `${id}-error` : undefined,
   };
 }
 
@@ -432,8 +450,63 @@ function entryDescription(entry: PaymentEntry, users: Map<number, Member>) {
     entry.userId === null
       ? "an unmatched sender"
       : memberName(users.get(entry.userId));
-  const verb = entry.direction === "in" ? "received from" : "paid to";
-  return `${usd(entry.amountCents)} ${verb} ${player} on ${paidDate.format(new Date(entry.paidAt))}`;
+  return describeEntry(entry, player);
+}
+
+function rowClass(entry: PaymentEntry) {
+  if (entry.status === "voided") {
+    return "ledger-voided";
+  }
+  return entry.status === "ignored" ? "ledger-ignored" : undefined;
+}
+
+// Only Venmo imports can return to the queue; manual entries are corrected by void.
+function reopenable(entry: PaymentEntry) {
+  return (
+    (entry.source === "venmo_csv" || entry.source === "venmo_email") &&
+    (entry.status === "approved" || entry.status === "ignored")
+  );
+}
+
+function EntryActions({
+  entry,
+  description,
+  pending,
+  onVoid,
+  onReopen,
+}: {
+  entry: PaymentEntry;
+  description: string;
+  pending: boolean;
+  onVoid: (entry: PaymentEntry) => void;
+  onReopen: (entry: PaymentEntry) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {reopenable(entry) && (
+        <button
+          className="button secondary"
+          disabled={pending}
+          onClick={() => {
+            onReopen(entry);
+          }}
+        >
+          Reopen <span className="sr-only">{description}</span>
+        </button>
+      )}
+      {entry.status === "approved" && (
+        <button
+          className="button secondary"
+          disabled={pending}
+          onClick={() => {
+            onVoid(entry);
+          }}
+        >
+          Void <span className="sr-only">{description}</span>
+        </button>
+      )}
+    </div>
+  );
 }
 
 function EntryRow({
@@ -441,26 +514,32 @@ function EntryRow({
   users,
   pending,
   onVoid,
+  onReopen,
 }: {
   entry: PaymentEntry;
   users: Map<number, Member>;
   pending: boolean;
   onVoid: (entry: PaymentEntry) => void;
+  onReopen: (entry: PaymentEntry) => void;
 }) {
-  const voided = entry.status === "voided";
-  const struck = voided ? "ledger-voided" : undefined;
+  const muted = rowClass(entry);
   return (
     <tr>
-      <td className={struck}>{paidDate.format(new Date(entry.paidAt))}</td>
-      <th scope="row" className={struck}>
+      <td className={muted}>{paidDate.format(new Date(entry.paidAt))}</td>
+      <th scope="row" className={muted}>
         {entry.userId === null
           ? "Unmatched"
           : memberName(users.get(entry.userId))}
+        {entry.venmoName && (
+          <span className="block text-xs font-normal text-muted">
+            Venmo: {entry.venmoName}
+          </span>
+        )}
       </th>
-      <td className={struck}>{directionLabels[entry.direction]}</td>
-      <td className={struck}>{usd(entry.amountCents)}</td>
-      <td className={struck}>{sourceLabels[entry.source]}</td>
-      <td className={`min-w-40 whitespace-normal ${struck ?? ""}`}>
+      <td className={muted}>{directionLabels[entry.direction]}</td>
+      <td className={muted}>{usd(entry.amountCents)}</td>
+      <td className={muted}>{sourceLabels[entry.source]}</td>
+      <td className={`min-w-40 whitespace-normal ${muted ?? ""}`}>
         {entry.note ?? ""}
       </td>
       <td>
@@ -471,18 +550,13 @@ function EntryRow({
         </span>
       </td>
       <td>
-        {entry.status === "approved" && (
-          <button
-            className="button secondary"
-            disabled={pending}
-            onClick={() => {
-              onVoid(entry);
-            }}
-          >
-            Void{" "}
-            <span className="sr-only">{entryDescription(entry, users)}</span>
-          </button>
-        )}
+        <EntryActions
+          entry={entry}
+          description={entryDescription(entry, users)}
+          pending={pending}
+          onVoid={onVoid}
+          onReopen={onReopen}
+        />
       </td>
     </tr>
   );
@@ -530,14 +604,18 @@ function EntryHistory({
   data,
   pending,
   onVoid,
+  onReopen,
 }: {
   data: PaymentsData;
   pending: boolean;
   onVoid: (id: number) => Promise<boolean>;
+  onReopen: (id: number) => void;
 }) {
   const [confirming, setConfirming] = useState<PaymentEntry | null>(null);
   const users = new Map(data.users.map((member) => [member.id, member]));
-  if (!data.entries.length) {
+  // Pending entries are decided in the review queue, not here.
+  const entries = data.entries.filter((entry) => entry.status !== "pending");
+  if (!entries.length) {
     return (
       <p className="muted">
         No payments recorded for the {data.season} season yet.
@@ -587,13 +665,17 @@ function EntryHistory({
             </tr>
           </thead>
           <tbody>
-            {data.entries.map((entry) => (
+            {entries.map((entry) => (
               <EntryRow
                 key={entry.id}
                 entry={entry}
                 users={users}
                 pending={pending}
                 onVoid={setConfirming}
+                onReopen={(item) => {
+                  setConfirming(null);
+                  onReopen(item.id);
+                }}
               />
             ))}
           </tbody>
@@ -606,12 +688,15 @@ function EntryHistory({
 function PaymentsView({
   data,
   actions,
+  write,
 }: {
   data: PaymentsData;
   actions: ReturnType<typeof usePaymentActions>;
+  write: PaymentWriter;
 }) {
   return (
     <div className="space-y-6">
+      <ReviewQueue data={data} write={write} />
       <PaymentSummary summary={data.summary} />
       <section className="space-y-3" aria-labelledby="payment-balances">
         <div className="page-toolbar justify-between">
@@ -640,64 +725,71 @@ function PaymentsView({
         <h2 id="payment-history" className="font-semibold">
           Payment history
         </h2>
-        <ErrorNotice error={actions.voiding.error} />
+        <ErrorNotice error={actions.history.error} />
         <EntryHistory
           data={data}
-          pending={actions.voiding.pending}
+          pending={actions.history.pending}
           onVoid={actions.voidEntry}
+          onReopen={(id) => {
+            void actions.reopenEntry(id);
+          }}
         />
       </section>
+      <ImportStatement data={data} write={write} />
+      <KeywordsForm data={data} write={write} />
+      <VenmoAccounts data={data} write={write} />
     </div>
   );
 }
 
-function usePaymentActions(reload: () => void) {
+function usePaymentActions(write: PaymentWriter) {
   const entry = useMutation();
-  const voiding = useMutation();
+  const history = useMutation();
   const banker = useMutation();
-  const [notice, setNotice] = useState<string | null>(null);
   async function addEntry(input: ManualPaymentInput) {
-    setNotice(null);
-    const result = await entry.mutate<PaymentsData>(
-      "/api/admin/payments",
-      "POST",
-      input,
+    const verb = input.direction === "in" ? "received" : "paid out";
+    const result = await write(
+      entry,
+      { path: "/api/admin/payments", method: "POST", body: input },
+      () => `Recorded ${usd(input.amountCents)} ${verb}.`,
     );
-    if (!result?.ok) {
-      return false;
-    }
-    setNotice(
-      `Recorded ${usd(input.amountCents)} ${input.direction === "in" ? "received" : "paid out"}.`,
-    );
-    reload();
-    return true;
+    return result !== null;
   }
   async function voidEntry(id: number) {
-    setNotice(null);
-    const result = await voiding.mutate<PaymentsData>(
-      `/api/admin/payments/${id}/void`,
-      "POST",
+    const result = await write(
+      history,
+      { path: `/api/admin/payments/${id}/void`, method: "POST" },
+      () => "Payment voided.",
     );
-    if (!result?.ok) {
-      return false;
-    }
-    setNotice("Payment voided.");
-    reload();
-    return true;
+    return result !== null;
+  }
+  async function reopenEntry(id: number) {
+    await write(
+      history,
+      { path: `/api/admin/payments/${id}/reopen`, method: "POST" },
+      () => "Payment returned to review.",
+    );
   }
   async function saveBanker(season: number, userId: number | null) {
-    setNotice(null);
-    const result = await banker.mutate<PaymentsData>(
-      `/api/admin/payments/banker?${new URLSearchParams({ season: String(season) })}`,
-      "PUT",
-      { userId },
+    await write(
+      banker,
+      {
+        path: `/api/admin/payments/banker${seasonQuery(season)}`,
+        method: "PUT",
+        body: { userId },
+      },
+      () => (userId === null ? "Banker cleared." : "Banker saved."),
     );
-    if (result?.ok) {
-      setNotice(userId === null ? "Banker cleared." : "Banker saved.");
-      reload();
-    }
   }
-  return { entry, voiding, banker, notice, addEntry, voidEntry, saveBanker };
+  return {
+    entry,
+    history,
+    banker,
+    addEntry,
+    voidEntry,
+    reopenEntry,
+    saveBanker,
+  };
 }
 
 export function PaymentsPage() {
@@ -708,7 +800,8 @@ export function PaymentsPage() {
     `/api/admin/payments${season ? `?${new URLSearchParams({ season })}` : ""}`,
     { retainDataOnReload: true },
   );
-  const actions = usePaymentActions(resource.reload);
+  const { notice, write } = usePaymentWriter(resource.reload);
+  const actions = usePaymentActions(write);
   return (
     <>
       <PageHeading
@@ -724,13 +817,13 @@ export function PaymentsPage() {
         means the player owes the banker; You owe means the banker owes the
         player.
       </p>
-      {actions.notice && (
+      {notice && (
         <p role="status" className="alert success mb-4">
-          {actions.notice}
+          {notice}
         </p>
       )}
       <ResourceView resource={resource}>
-        {(data) => <PaymentsView data={data} actions={actions} />}
+        {(data) => <PaymentsView data={data} actions={actions} write={write} />}
       </ResourceView>
     </>
   );

@@ -204,7 +204,10 @@ export type PaymentSource =
 /** Only approved entries count toward a balance. */
 export type PaymentStatus = "pending" | "approved" | "ignored" | "voided";
 
-/** One movement of money between the banker and a player; never edited, only voided. */
+/**
+ * One movement of money between the banker and a player. Amounts are never
+ * edited: imported entries move through review, and a mistake is voided.
+ */
 export interface PaymentEntry {
   id: number;
   season: number;
@@ -217,9 +220,44 @@ export interface PaymentEntry {
   source: PaymentSource;
   status: PaymentStatus;
   note: string | null;
+  /** Counterparty display name and transaction ID as Venmo reported them. */
+  venmoName: string | null;
+  venmoTransactionId: string | null;
   paidAt: string;
   createdAt: string;
   voidedAt: string | null;
+}
+
+/** How Venmo identifies one player. */
+export interface VenmoAccount {
+  userId: number;
+  /** Without the leading `@`; only used to build request/pay links. */
+  username: string | null;
+  /** Names matched case-insensitively against imported payments; unique across players. */
+  displayNames: string[];
+}
+
+export type VenmoAccountInput = Omit<VenmoAccount, "userId">;
+
+/** Outcome of one Venmo statement import. */
+export interface VenmoImportResult {
+  /** New entries, split by how the classifier filed them. */
+  approved: number;
+  pending: number;
+  /** Rows whose transaction ID is already in the ledger. */
+  duplicates: number;
+  /** Rows that are not completed person-to-person payments. */
+  skipped: number;
+}
+
+export interface VenmoImportResponse {
+  data: PaymentsData;
+  result: VenmoImportResult;
+}
+
+export interface PaymentApprovalInput {
+  userId: number;
+  season: number;
 }
 
 export interface PaymentPlayerBalance {
@@ -259,6 +297,13 @@ export interface PaymentsData {
   /** Every user, for assigning entries and choosing the banker. */
   users: Pick<User, "id" | "username">[];
   summary: PaymentPoolSummary;
+  /** Only players with a username or at least one display name. */
+  venmoAccounts: VenmoAccount[];
+  /**
+   * Lowercase note fragments. An imported payment is approved automatically
+   * when its note contains one and its Venmo name belongs to a player.
+   */
+  keywords: string[];
 }
 
 export interface ManualPaymentInput {

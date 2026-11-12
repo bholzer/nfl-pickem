@@ -652,10 +652,11 @@ test("administrator records a manual payment, sees the balance move, and voids i
     name: `${rehearsal.season} season balances`,
     exact: true,
   });
+  // The fifth data cell is Balance; a Venmo link column may follow it.
   const rival = balances.getByRole("row").filter({
     has: page.getByRole("rowheader", { name: /^Rehearsal Rival\b/ }),
   });
-  await expect(rival.getByRole("cell").last()).toHaveText(
+  await expect(rival.getByRole("cell").nth(4)).toHaveText(
     wording(before.balanceCents),
   );
 
@@ -680,7 +681,7 @@ test("administrator records a manual payment, sees the balance move, and voids i
   await expect(page.getByRole("status")).toHaveText(
     "Recorded $25.00 received.",
   );
-  await expect(rival.getByRole("cell").last()).toHaveText(
+  await expect(rival.getByRole("cell").nth(4)).toHaveText(
     wording(before.balanceCents + 2500),
   );
   expect((await rivalBalance()).paidInCents).toBe(before.paidInCents + 2500);
@@ -702,7 +703,7 @@ test("administrator records a manual payment, sees the balance move, and voids i
   );
   await page.getByRole("button", { name: "Confirm void", exact: true }).click();
   await expect(page.getByRole("status")).toHaveText("Payment voided.");
-  await expect(rival.getByRole("cell").last()).toHaveText(
+  await expect(rival.getByRole("cell").nth(4)).toHaveText(
     wording(before.balanceCents),
   );
   await expect(entry).toContainText("Voided");
@@ -739,4 +740,160 @@ test("administrator records a manual payment, sees the balance move, and voids i
       fullPage: true,
     });
   }
+});
+
+// Invented names and IDs only; shaped like a Venmo statement export.
+function venmoStatement(season: number) {
+  const header =
+    ",ID,Datetime,Type,Status,Note,From,To,Amount (total),Amount (tip),Amount (tax),Amount (fee),Tax Rate,Tax Exempt,Funding Source,Destination,Beginning Balance,Ending Balance,Statement Period Venmo Fees,Terminal Location,Year to Date Venmo Fees,Disclaimer";
+  const row = (id: string, at: string, note: string, amount: string) =>
+    `,${id},${season}-09-${at},Payment,Complete,${note},Jordan Synthetic,Rehearsal Banker,${amount},,0,,0,,,Venmo balance,,,,Venmo,,`;
+  return [
+    "Account Statement - (@rehearsal-banker) ,,,,,,,,,,,,,,,,,,,,,",
+    "Account Activity,,,,,,,,,,,,,,,,,,,,,",
+    header,
+    row("9100000000000000001", "10T18:22:11", "pickem week 1", "+ $5.00"),
+    row("9100000000000000002", "11T19:05:42", "Tacos and the game", "+ $7.50"),
+  ].join("\n");
+}
+
+test("administrator imports a Venmo statement, reviews it, and sees the balance", async ({
+  page,
+  rehearsal,
+}, testInfo) => {
+  const season = rehearsal.season;
+  const playerBalance = async () => {
+    const data = (await (
+      await page.request.get(`/api/admin/payments?season=${season}`, {
+        maxRedirects: 0,
+      })
+    ).json()) as PaymentsData;
+    const row = data.players.find(
+      (player) => player.user.username === "Rehearsal Player",
+    );
+    assert(row, "Rehearsal Player must have a balance row");
+    return row;
+  };
+  const wording = (cents: number) => {
+    const amount = `$${(Math.abs(cents) / 100).toFixed(2)}`;
+    if (cents === 0) {
+      return "Settled";
+    }
+    return cents < 0 ? `Owes ${amount}` : `You owe ${amount}`;
+  };
+
+  await page.goto(rehearsal.links.admin);
+  await expect(
+    page.getByRole("heading", { name: "Make your picks", exact: true }),
+  ).toBeVisible();
+  await page.goto(`/admin/payments?season=${season}`);
+  await expect(
+    page.getByRole("heading", { name: "Payments", exact: true }),
+  ).toBeVisible();
+  const before = await playerBalance();
+
+  await page.locator("summary", { hasText: "Venmo accounts" }).click();
+  const account = page.getByRole("form", {
+    name: "Venmo for Rehearsal Player",
+    exact: true,
+  });
+  await account
+    .getByLabel("Venmo username", { exact: true })
+    .fill("@rehearsal-player");
+  await account
+    .getByLabel("Venmo names, one per line", { exact: true })
+    .fill("Jordan Synthetic");
+  await account
+    .getByRole("button", { name: "Save Venmo for Rehearsal Player" })
+    .click();
+  // The saved form remounts with the server's values and confirms in place.
+  await expect(account.getByRole("status")).toHaveText("Saved.");
+
+  await page
+    .getByLabel("Keywords, separated by commas", { exact: true })
+    .fill("pickem");
+  await page
+    .getByRole("button", { name: "Save keywords", exact: true })
+    .click();
+  await expect(
+    page.getByText("Keywords saved.", { exact: true }),
+  ).toBeVisible();
+
+  await page.getByLabel("Statement CSV", { exact: true }).setInputFiles({
+    name: "venmo-statement.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from(venmoStatement(season)),
+  });
+  const imported = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === "/api/admin/payments/import" &&
+      response.request().method() === "POST",
+  );
+  await page
+    .getByRole("button", { name: "Import statement", exact: true })
+    .click();
+  expect((await imported).status()).toBe(200);
+  await expect(page.getByText(/^Import finished: /)).toHaveText(
+    /^Import finished: 1 approved, 1 needs review, 0 already imported, \d+ skipped\.$/,
+  );
+
+  await expect(
+    page.getByRole("heading", { name: "Needs review (1)", exact: true }),
+  ).toBeVisible();
+  const queue = page.getByRole("list", { name: "Payments to review" });
+  await expect(queue.getByRole("listitem")).toHaveCount(1);
+  await expect(queue).toContainText("Tacos and the game");
+  const description = `$7.50 received from Jordan Synthetic on Sep 11, ${season}`;
+  await expect(
+    queue.getByRole("combobox", { name: `Player for ${description}` }),
+  ).toHaveText("Rehearsal Player");
+  await expect(
+    queue.getByRole("combobox", { name: `Season for ${description}` }),
+  ).toHaveText(`${season} season`);
+  await queue
+    .getByRole("button", { name: `Approve ${description}`, exact: true })
+    .click();
+  await expect(
+    page.getByText("Payment approved.", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Needs review (0)", exact: true }),
+  ).toBeVisible();
+
+  const after = await playerBalance();
+  expect(after.paidInCents).toBe(before.paidInCents + 1250);
+  expect(after.balanceCents).toBe(before.balanceCents + 1250);
+  const balances = page.getByRole("table", {
+    name: `${season} season balances`,
+    exact: true,
+  });
+  const player = balances.getByRole("row").filter({
+    has: page.getByRole("rowheader", { name: /^Rehearsal Player\b/ }),
+  });
+  await expect(player.getByRole("cell").nth(4)).toHaveText(
+    wording(after.balanceCents),
+  );
+  if (after.balanceCents !== 0) {
+    const txn = after.balanceCents < 0 ? "charge" : "pay";
+    const amount = (Math.abs(after.balanceCents) / 100).toFixed(2);
+    await expect(player.getByRole("link")).toHaveAttribute(
+      "href",
+      `https://venmo.com/?txn=${txn}&audience=private&recipients=rehearsal-player&amount=${amount}&note=Pick%27em%20${season}%20pickem`,
+    );
+  }
+
+  const history = page.getByRole("table", {
+    name: `${season} season payment history`,
+    exact: true,
+  });
+  for (const note of ["pickem week 1", "Tacos and the game"]) {
+    const row = history.getByRole("row").filter({ hasText: note });
+    await expect(row).toContainText("Venmo: Jordan Synthetic");
+    await expect(row).toContainText("Approved");
+    await expect(row.getByRole("button", { name: /^Reopen / })).toBeVisible();
+  }
+  await page.screenshot({
+    path: testInfo.outputPath("payments-venmo.png"),
+    fullPage: true,
+  });
 });
