@@ -9,6 +9,7 @@ import type { Env } from "../env";
 import { listUsers } from "../db";
 import { getBankerUserId, listPaymentEntries } from "../ledger";
 import { listPaymentKeywords, listVenmoAccounts } from "../venmo-accounts";
+import { listVenmoEmailFailures } from "../venmo-email-failures";
 import type { SeasonContext } from "./espn";
 import { seasonSummary } from "./season";
 
@@ -151,15 +152,23 @@ export async function paymentsData(
   season: number,
   context: SeasonContext,
 ): Promise<PaymentsData> {
-  const [summary, entries, users, bankerUserId, venmoAccounts, keywords] =
-    await Promise.all([
-      seasonSummary(env, season, context),
-      listPaymentEntries(env.DB, season),
-      listUsers(env.DB),
-      getBankerUserId(env.DB),
-      listVenmoAccounts(env.DB),
-      listPaymentKeywords(env.DB),
-    ]);
+  const [
+    summary,
+    entries,
+    users,
+    bankerUserId,
+    venmoAccounts,
+    keywords,
+    emailFailures,
+  ] = await Promise.all([
+    seasonSummary(env, season, context),
+    listPaymentEntries(env.DB, season),
+    listUsers(env.DB),
+    getBankerUserId(env.DB),
+    listVenmoAccounts(env.DB),
+    listPaymentKeywords(env.DB),
+    listVenmoEmailFailures(env.DB),
+  ]);
   const publicUsers = users.map(({ id, username }) => ({ id, username }));
   return {
     season,
@@ -174,5 +183,6 @@ export async function paymentsData(
     users: publicUsers,
     venmoAccounts,
     keywords,
+    emailFailures,
   };
 }

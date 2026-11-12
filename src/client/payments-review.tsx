@@ -4,16 +4,18 @@ import type {
   PaymentEntry,
   PaymentsData,
   SeasonsData,
+  VenmoEmailFailure,
 } from "../shared/contracts";
 import { useMutation, useResource } from "./api";
 import {
   describeEntry,
   memberOptions,
   paidDate,
+  seasonQuery,
   sourceLabels,
   type PaymentWriter,
 } from "./payments-shared";
-import { ErrorNotice, OptionPicker, usd } from "./ui";
+import { centralDate, ErrorNotice, OptionPicker, usd } from "./ui";
 
 function senderName(entry: PaymentEntry) {
   return entry.venmoName ?? "an unknown Venmo user";
@@ -158,6 +160,90 @@ export function ReviewQueue({
       ) : (
         <p className="muted">No imported payments need review.</p>
       )}
+    </section>
+  );
+}
+
+function EmailFailureItem({
+  failure,
+  pending,
+  onDismiss,
+}: {
+  failure: VenmoEmailFailure;
+  pending: boolean;
+  onDismiss: () => void;
+}) {
+  return (
+    <li className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 py-3 first:pt-0 last:pb-0">
+      <div className="min-w-0 flex-1 basis-60">
+        <p className="font-semibold wrap-anywhere">{failure.subject}</p>
+        <p>
+          <time dateTime={failure.receivedAt}>
+            {centralDate.format(new Date(failure.receivedAt))}
+          </time>{" "}
+          · {failure.reason}
+        </p>
+      </div>
+      <button
+        className="button secondary shrink-0"
+        disabled={pending}
+        onClick={onDismiss}
+      >
+        Dismiss <span className="sr-only">{failure.subject}</span>
+      </button>
+    </li>
+  );
+}
+
+/** Payment emails the server could not read; the banker enters them by hand. */
+export function EmailFailures({
+  data,
+  write,
+}: {
+  data: PaymentsData;
+  write: PaymentWriter;
+}) {
+  const dismiss = useMutation();
+  const failures = data.emailFailures;
+  if (!failures.length) {
+    return null;
+  }
+  const onDismiss = (id: number) =>
+    void write(
+      dismiss,
+      {
+        path: `/api/admin/payments/email-failures/${id}/dismiss${seasonQuery(data.season)}`,
+        method: "POST",
+      },
+      () => "Email dismissed.",
+    );
+  return (
+    <section className="space-y-3" aria-labelledby="email-failures">
+      <h2 id="email-failures" className="font-semibold">
+        Unread Venmo emails ({failures.length})
+      </h2>
+      <ErrorNotice error={dismiss.error} />
+      <div className="alert warning">
+        <p className="mb-3">
+          These Venmo emails could not be read. Check Venmo and add the payment
+          by hand, then dismiss.
+        </p>
+        <ul
+          className="divide-y divide-line"
+          aria-label="Venmo emails that could not be read"
+        >
+          {failures.map((failure) => (
+            <EmailFailureItem
+              key={failure.id}
+              failure={failure}
+              pending={dismiss.pending}
+              onDismiss={() => {
+                onDismiss(failure.id);
+              }}
+            />
+          ))}
+        </ul>
+      </div>
     </section>
   );
 }

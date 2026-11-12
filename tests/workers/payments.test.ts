@@ -181,6 +181,7 @@ describe("payments ledger administration", () => {
       users: [{ id: admin.user.id, username: admin.user.username }],
       venmoAccounts: [],
       keywords: [],
+      emailFailures: [],
     });
   });
 

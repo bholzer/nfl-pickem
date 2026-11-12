@@ -18,6 +18,13 @@ export interface Env {
   MAINTENANCE_MODE: string;
   SESSION_SECRET: string;
   SUBMISSION_TOKEN_SECRET: string;
+  /**
+   * The secret Email Routing address Venmo emails are forwarded to. Email is
+   * rejected unless both Venmo inbox settings are set.
+   */
+  VENMO_INBOX_ADDRESS?: string;
+  /** The banker's mailbox whose auto-forwarding delivers Venmo emails. */
+  VENMO_FORWARDER_ADDRESS?: string;
 }
 
 interface Variables {

@@ -29,6 +29,7 @@ import { normalizeVenmoName } from "./services/venmo";
 import { recordVenmoPayments } from "./services/venmo-import";
 import { parseVenmoStatement } from "./services/venmo-statement";
 import { replacePaymentKeywords, replaceVenmoAccount } from "./venmo-accounts";
+import { dismissVenmoEmailFailure } from "./venmo-email-failures";
 
 const MAX_DISPLAY_NAMES = 5;
 const MAX_DISPLAY_NAME_LENGTH = 100;
@@ -257,6 +258,19 @@ venmoRoutes.post(
     return c.json(response);
   },
 );
+
+venmoRoutes.post("/email-failures/:id/dismiss", requireCsrf, async (c) => {
+  const requested = parseSeason(c.req.query("season"));
+  const id = parseId(c.req.param("id"), "Invalid email failure ID");
+  const result = await dismissVenmoEmailFailure(c.env.DB, id);
+  if (result === "not_found") {
+    return c.json({ error: "Email failure not found" }, 404);
+  }
+  if (result === "conflict") {
+    return c.json({ error: "The email failure was already dismissed" }, 409);
+  }
+  return c.json(await seasonData(c, requested));
+});
 
 venmoRoutes.post("/:id/approve", requireCsrf, async (c) => {
   const id = parseId(c.req.param("id"), "Invalid payment ID");
