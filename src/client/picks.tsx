@@ -813,15 +813,29 @@ function mondayNightTotal(games: Game[]) {
   return total;
 }
 
+type WeekStanding = StandingsData["standings"][number];
+
+// Matches the Discord standings: once anyone wins, everyone else is out.
+function eliminatedStandings(standings: WeekStanding[]): Set<WeekStanding> {
+  const decided = standings.some((standing) => standing.winner);
+  return new Set(
+    standings.filter(
+      (standing) => !standing.winner && (decided || !standing.contender),
+    ),
+  );
+}
+
 function StandingStatus({
   standing,
   count,
+  eliminated,
 }: {
-  standing: StandingsData["standings"][number];
+  standing: WeekStanding;
   count: number;
+  eliminated: boolean;
 }) {
   const winner = standing.winner && count > 1;
-  let label = standing.contender ? "Contender" : "Eliminated";
+  let label = eliminated ? "Eliminated" : "Contender";
   if (winner) {
     label = "Winner";
   }
@@ -874,14 +888,16 @@ function StandingRow({
   standing,
   data,
   current,
+  eliminated,
 }: {
-  standing: StandingsData["standings"][number];
+  standing: WeekStanding;
   data: StandingsData;
   current: boolean;
+  eliminated: boolean;
 }) {
   return (
     <tr data-current-user={current || undefined}>
-      <td className="font-semibold">{standing.rank}</td>
+      <td className="font-semibold">{eliminated ? "—" : standing.rank}</td>
       <th scope="row">
         <span className="standing-player">
           <span className="min-w-0">
@@ -890,7 +906,11 @@ function StandingRow({
           {current && <span className="you-badge">You</span>}
         </span>
         <div className="mt-1">
-          <StandingStatus standing={standing} count={data.standings.length} />
+          <StandingStatus
+            standing={standing}
+            count={data.standings.length}
+            eliminated={eliminated}
+          />
         </div>
       </th>
       <td className="font-bold">{standing.correctPicks}</td>
@@ -907,6 +927,12 @@ function StandingRow({
 
 function StandingsView({ data }: { data: StandingsData }) {
   const { user } = useSession();
+  const eliminated = eliminatedStandings(data.standings);
+  // The server order is by rank; eliminated players drop below everyone left.
+  const ordered = [
+    ...data.standings.filter((standing) => !eliminated.has(standing)),
+    ...data.standings.filter((standing) => eliminated.has(standing)),
+  ];
   if (!data.standings.length) {
     return (
       <div className="panel empty-state">
@@ -963,12 +989,13 @@ function StandingsView({ data }: { data: StandingsData }) {
             </tr>
           </thead>
           <tbody>
-            {data.standings.map((standing) => (
+            {ordered.map((standing) => (
               <StandingRow
                 key={standing.user.id}
                 standing={standing}
                 data={data}
                 current={standing.user.id === user?.id}
+                eliminated={eliminated.has(standing)}
               />
             ))}
           </tbody>

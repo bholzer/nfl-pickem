@@ -370,14 +370,17 @@ export function renderStandings(
       !standing.winner && (winners.length > 0 || !standing.contender),
   );
   const sections = [`# ${period.season} Week ${period.week} Pick-em Standings`];
-  const entry = (standing: Standing): string => {
+  const detail = (standing: Standing): string => {
     const points = `${standing.correctPicks} ${standing.correctPicks === 1 ? "point" : "points"}`;
     const tiebreaker =
       standing.tiebreakerDiff === null
         ? ""
         : ` (Tiebreaker: ${standing.tiebreaker}, off by ${standing.tiebreakerDiff})`;
+    return `${displayName(standing.user)}: ${points}${tiebreaker}`;
+  };
+  const entry = (standing: Standing): string => {
     // Escaped so Discord shows the real rank instead of renumbering a list.
-    const line = `${standing.rank}\\. ${displayName(standing.user)}: ${points}${tiebreaker}`;
+    const line = `${standing.rank}\\. ${detail(standing)}`;
     const receipt = standing.winner
       ? receiptLinks?.get(standing.submissionId)
       : undefined;
@@ -404,7 +407,8 @@ export function renderStandings(
   if (eliminated.length) {
     sections.push(
       "### Eliminated :skull:",
-      ...eliminated.map((standing) => `~~${entry(standing)}~~`),
+      // A rank means nothing once a player is out, so these go unnumbered.
+      ...eliminated.map((standing) => `~~${detail(standing)}~~`),
     );
   }
   // Headings already add spacing; blank lines only make the message sparse.

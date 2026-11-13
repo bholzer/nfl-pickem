@@ -586,8 +586,8 @@ describe("Discord content", () => {
         "### :tada: Winner! :tada:",
         "1\\. Alice: 8 points (Tiebreaker: 43, off by 9)",
         "### Eliminated :skull:",
-        "~~2\\. Bob: 8 points (Tiebreaker: 48, off by 14)~~",
-        "~~3\\. Carol: 7 points (Tiebreaker: 42, off by 8)~~",
+        "~~Bob: 8 points (Tiebreaker: 48, off by 14)~~",
+        "~~Carol: 7 points (Tiebreaker: 42, off by 8)~~",
       ].join("\n"),
     );
   });

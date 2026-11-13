@@ -38,6 +38,12 @@ const reference = JSON.parse(
   ),
 ) as ReferenceResult[];
 
+// Rails ranked unfinished weeks by the still-hidden guesses; ties now share a
+// rank until the week is final, so these reference ranks are overridden.
+const sharedRanks = new Map([
+  ["partial Monday finals do not activate tiebreaker", [1, 1]],
+]);
+
 describe("Rails domain parity", () => {
   for (const [index, scenario] of parityCases.entries()) {
     it(scenario.name, async () => {
@@ -51,7 +57,12 @@ describe("Rails domain parity", () => {
           delete copy.user;
           return copy;
         }),
-      ).toEqual(expected.standings);
+      ).toEqual(
+        expected.standings.map((standing, position) => ({
+          ...standing,
+          rank: sharedRanks.get(scenario.name)?.[position] ?? standing.rank,
+        })),
+      );
       expect(showTiebreaker(standings, board)).toBe(expected.showTiebreaker);
       expect(completedGroups(board)).toEqual(expected.groups);
       expect(
@@ -78,6 +89,40 @@ it("keeps exact summary newlines, accents, and lexicographic competition orderin
   expect(submissionSummary(submission, normalizeScoreboard(scenario.raw))).toBe(
     "Zoë 雪\nEarlier: Home 3\nDix à Québec: Équipe Dix\nDeux à Montréal: Équipe Deux\nTiebreaker: 37",
   );
+});
+
+it("ranks an unfinished week by points alone, contenders first within a tie", () => {
+  const board = scoreboardFixture([
+    { id: "1", status: "STATUS_FINAL" },
+    { id: "2" },
+    { id: "3" },
+  ]);
+  const entry = (
+    id: number,
+    picks: Record<string, string>,
+    tiebreaker: number,
+  ) => submissionFixture({ id, picks, tiebreaker });
+  const standings = calculateStandings(
+    [
+      entry(1, { "1": "away-1", "2": "home-2", "3": "home-3" }, 60),
+      entry(2, { "1": "away-1", "2": "away-2", "3": "home-3" }, 30),
+      entry(3, { "1": "home-1", "2": "home-2", "3": "home-3" }, 45),
+      entry(4, { "1": "away-1", "2": "away-2", "3": "away-3" }, 30),
+    ],
+    board,
+  );
+  expect(
+    standings.map((standing) => [
+      standing.submissionId,
+      standing.rank,
+      standing.contender,
+    ]),
+  ).toEqual([
+    [3, 1, true],
+    [2, 2, true],
+    [4, 2, true],
+    [1, 2, false],
+  ]);
 });
 
 it("excludes invented IDs, opposing-game teams and already started picks", () => {

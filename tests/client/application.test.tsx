@@ -626,7 +626,45 @@ describe("picks and standings", () => {
     expect(
       within(bob).getByRole("cell", { name: "Not available" }),
     ).toBeVisible();
-    expect(within(bob).getByText("Contender")).toBeVisible();
+    expect(within(bob).getByText("Eliminated")).toBeVisible();
+  });
+  it("lists eliminated players unnumbered below everyone still in contention", async () => {
+    const standing = (id: number, username: string, correctPicks: number) => ({
+      user: { id, username },
+      correctPicks,
+      remainingCount: 3,
+      tiebreaker: null,
+      tiebreakerDiff: null,
+      contender: true,
+      winner: false,
+      rank: id,
+    });
+    network.use(
+      http.get("http://localhost/api/standings", () =>
+        HttpResponse.json({
+          scoreboard: weekData.scoreboard,
+          showTiebreaker: false,
+          standings: [
+            standing(1, "Alice", 3),
+            { ...standing(2, "Bob", 2), contender: false },
+            standing(3, "Carol", 1),
+          ],
+        }),
+      ),
+    );
+    mount("/standings?season=2026&week=4");
+    await screen.findByRole("row", { name: /Alice/ });
+    const rows = screen.getAllByRole("row").slice(1);
+    expect(
+      rows.map((row) => [
+        within(row).getAllByRole("cell")[0]?.textContent,
+        within(row).getByRole("rowheader").textContent,
+      ]),
+    ).toEqual([
+      ["1", expect.stringContaining("Alice")],
+      ["3", expect.stringContaining("Carol")],
+      ["—", "Bob Eliminated"],
+    ]);
   });
 });
 
