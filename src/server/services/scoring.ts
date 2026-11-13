@@ -70,12 +70,17 @@ function markWinners(standings: Standing[], complete: boolean): void {
   }
 }
 
-function rankStandings(standings: Standing[]): void {
-  // No Monday total means descending guesses still break display-rank ties.
+function rankStandings(standings: Standing[], complete: boolean): void {
+  // Guesses stay hidden until the week is final, so until then only points
+  // rank and contenders lead their ties. Once final, a week with no Monday
+  // total still breaks display-rank ties by descending guess.
   const secondKey = (standing: Standing) =>
-    standing.tiebreakerDiff ?? -standing.tiebreaker;
+    complete ? (standing.tiebreakerDiff ?? -standing.tiebreaker) : 0;
   standings.sort(
-    (a, b) => b.correctPicks - a.correctPicks || secondKey(a) - secondKey(b),
+    (a, b) =>
+      b.correctPicks - a.correctPicks ||
+      secondKey(a) - secondKey(b) ||
+      Number(b.contender) - Number(a.contender),
   );
   let previous: Standing | undefined;
   for (const [index, standing] of standings.entries()) {
@@ -154,7 +159,7 @@ export function calculateStandings(
     });
   }
   markWinners(standings, complete);
-  rankStandings(standings);
+  rankStandings(standings, complete);
   return standings;
 }
 
